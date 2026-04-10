@@ -3570,6 +3570,45 @@ canvas.addEventListener('touchend', (e) => {
   doLaunch();
 }, { passive: false });
 
+// 손패·조커 영역 터치로도 조준/발사 가능
+const extendedTouchPanels = ['hand-panel', 'joker-panel'];
+extendedTouchPanels.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.addEventListener('touchstart', (e) => {
+    if (state.phase !== 'aim') return;
+    // 버튼, 카드, 조커칩 등 UI 요소 터치는 무시
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'button' || e.target.closest('.pcard') || e.target.closest('.joker-chip') ||
+        e.target.closest('.sell-confirm') || e.target.closest('#deck-btn')) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    state.aimAngle = getCanvasAngle(touch.clientX, touch.clientY);
+    state.charging = true;
+    state.chargeVal = 0;
+    state.chargeDir = 1;
+  }, { passive: false });
+
+  el.addEventListener('touchmove', (e) => {
+    if (state.phase !== 'aim' || !state.charging) return;
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'button') return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    state.aimAngle = getCanvasAngle(touch.clientX, touch.clientY);
+  }, { passive: false });
+
+  el.addEventListener('touchend', (e) => {
+    if (!state.charging) return;
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'button' || e.target.closest('.pcard') || e.target.closest('.joker-chip') ||
+        e.target.closest('.sell-confirm') || e.target.closest('#deck-btn')) return;
+    e.preventDefault();
+    doLaunch();
+  }, { passive: false });
+});
+
 document.getElementById('res-retry').addEventListener('click', () => {
   resetGame();
   document.getElementById('result-screen').classList.remove('show');
