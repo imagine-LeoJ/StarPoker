@@ -3496,7 +3496,11 @@ function draw() {
     ctx.fill(); ctx.stroke();
     ctx.fillStyle = state.fever ? `rgba(248,113,113,0.9)` : sBaseLabel;
     ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('↘', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 9);
+    const lSlideX = midX + (x1 - midX) / 2;
+    const lSlideY = topAtMid + (topAtX1 - topAtMid) * 0.5;
+    ctx.fillText('↘', lSlideX, lSlideY + 3);
+    ctx.font = '7px Space Mono,monospace';
+    ctx.fillText(sDir > 0 ? '→' : '←', lSlideX, lSlideY + 13);
   }
 
   // Right flipper
@@ -3511,7 +3515,7 @@ function draw() {
 
     // SLIDE zone — 방향별 색상 + 피버 반짝임
     const slideT2 = Date.now() / 250;
-    const sDir2 = state._maxBoxDir || 1;
+    const sDir2 = -(state._maxBoxDir || 1); // 왼쪽과 반대 방향
     const sBaseFill2   = sDir2 > 0 ? `rgba(59,130,246,${0.15 + Math.sin(slideT2)*0.08})` : `rgba(239,68,68,${0.15 + Math.sin(slideT2)*0.08})`;
     const sBaseStroke2 = sDir2 > 0 ? `rgba(59,130,246,${0.4 + Math.sin(slideT2)*0.2})` : `rgba(239,68,68,${0.4 + Math.sin(slideT2)*0.2})`;
     const sBaseLabel2  = sDir2 > 0 ? '#60a5fa' : '#f87171';
@@ -3529,7 +3533,11 @@ function draw() {
     ctx.fill(); ctx.stroke();
     ctx.fillStyle = state.fever ? `rgba(248,113,113,0.9)` : sBaseLabel2;
     ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('↙', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 9);
+    const rSlideX = x0 + (midX - x0) / 2;
+    const rSlideY = topAtX0 + (topAtMid - topAtX0) * 0.5;
+    ctx.fillText('↙', rSlideX, rSlideY + 3);
+    ctx.font = '7px Space Mono,monospace';
+    ctx.fillText(sDir2 > 0 ? '→' : '←', rSlideX, rSlideY + 13);
 
     // MAX zone — 원래 금색
     const pulse2 = 0.7 + Math.sin(Date.now() / 300) * 0.3;
