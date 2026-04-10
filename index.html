@@ -512,7 +512,7 @@
       <div class="hud-label">턴</div>
       <div class="hud-val" id="hturn" style="color:var(--text)">1 / 3</div>
     </div>
-    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v8</div>
+    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v10</div>
   </div>
 
   <!-- BLIND PROGRESS -->
@@ -599,16 +599,52 @@
       <button class="deck-close" id="deck-close-btn">닫기 ✕</button>
     </div>
     <div class="deck-stats" id="deck-stats"></div>
-    <div class="deck-section-title">현재 손패</div>
-    <div class="deck-cards-grid" id="deck-hand-cards" style="margin-bottom:12px"></div>
-    <div class="deck-section-title">♥ 하트</div>
-    <div class="deck-cards-grid" id="dg-heart"></div>
-    <div class="deck-section-title">♦ 다이아몬드</div>
-    <div class="deck-cards-grid" id="dg-diamond"></div>
-    <div class="deck-section-title">♣ 클럽</div>
-    <div class="deck-cards-grid" id="dg-club"></div>
-    <div class="deck-section-title">♠ 스페이드</div>
-    <div class="deck-cards-grid" id="dg-spade"></div>
+    <!-- 족보 레벨 뷰 (접힘 가능) -->
+    <div id="deck-view-levels" style="display:none">
+      <div id="deck-hand-levels" style="margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 12px"></div>
+    </div>
+    <!-- 전체 카드 뷰 -->
+    <div id="deck-view-all" style="display:none">
+      <div class="deck-section-title">현재 손패</div>
+      <div class="deck-cards-grid" id="deck-hand-cards-all" style="margin-bottom:12px"></div>
+      <div class="deck-section-title">♥ 하트</div>
+      <div class="deck-cards-grid" id="dg-all-heart"></div>
+      <div class="deck-section-title">♦ 다이아몬드</div>
+      <div class="deck-cards-grid" id="dg-all-diamond"></div>
+      <div class="deck-section-title">♣ 클럽</div>
+      <div class="deck-cards-grid" id="dg-all-club"></div>
+      <div class="deck-section-title">♠ 스페이드</div>
+      <div class="deck-cards-grid" id="dg-all-spade"></div>
+    </div>
+    <!-- 남은 덱 뷰 -->
+    <div id="deck-view-remaining" style="display:none">
+      <div class="deck-section-title">남은 카드</div>
+      <div class="deck-cards-grid" id="dg-rem-heart" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-rem-diamond" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-rem-club" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-rem-spade"></div>
+    </div>
+    <!-- 사용된 카드 뷰 -->
+    <div id="deck-view-used" style="display:none">
+      <div class="deck-section-title">사용된 카드</div>
+      <div class="deck-cards-grid" id="dg-used-heart" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-used-diamond" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-used-club" style="margin-bottom:6px"></div>
+      <div class="deck-cards-grid" id="dg-used-spade"></div>
+    </div>
+    <!-- 카드 뷰 -->
+    <div id="deck-view-cards">
+      <div class="deck-section-title">현재 손패</div>
+      <div class="deck-cards-grid" id="deck-hand-cards" style="margin-bottom:12px"></div>
+      <div class="deck-section-title">♥ 하트</div>
+      <div class="deck-cards-grid" id="dg-heart"></div>
+      <div class="deck-section-title">♦ 다이아몬드</div>
+      <div class="deck-cards-grid" id="dg-diamond"></div>
+      <div class="deck-section-title">♣ 클럽</div>
+      <div class="deck-cards-grid" id="dg-club"></div>
+      <div class="deck-section-title">♠ 스페이드</div>
+      <div class="deck-cards-grid" id="dg-spade"></div>
+    </div>
   </div>
 
 
@@ -914,6 +950,8 @@ let state = {
   consumables: [],
   insurance: false,
   magnet: false,
+  _maxBoxTimer: 0,   // 맥스박스 방향 타이머 (ms)
+  _maxBoxDir: 1,     // 1=오른쪽, -1=왼쪽
   turn: 1,
   totalChipsBank: 0,
   stage: 0,
@@ -1127,14 +1165,14 @@ function initPins() {
 
 // 보스 정의 테이블
 const BOSS_DATA = [
-  { name:'\uAC00\ub514\uc5b8',        icon:'👾', color:'#f87171', hp:7,  skills:[] },
-  { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'👿', color:'#c084fc', hp:8,  skills:['move'] },
-  { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'🛡', color:'#60a5fa', hp:8,  skills:['shield','moveSmall'] },
-  { name:'\ud154\ub808\ud3ec\ud130',   icon:'🌀', color:'#34d399', hp:9,  skills:['teleport'] },
-  { name:'\uce74\ub4dc \ube0c\ub808\uc774\ucee4', icon:'🃏', color:'#c084fc', hp:9,  skills:['cardbreak','moveSmall'], counter:true },
-  { name:'\ub9ac\ud38c\uc11c',         icon:'🔮', color:'#fb923c', hp:10, skills:['repulse','moveSmall'],    counter:true },
-  { name:'\ud540 \ud30c\uad34\uc790',  icon:'💀', color:'#f87171', hp:10, skills:['combobreak','pinbreak','moveSmall'], counter:true },
-  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'🌑', color:'#e879f9', hp:15, skills:['chaos','moveRandom'], counter:true },
+  { name:'\uAC00\ub514\uc5b8',        icon:'👾', color:'#f87171', hp:5,  skills:[] },
+  { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'👿', color:'#c084fc', hp:6,  skills:['move'] },
+  { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'🛡', color:'#60a5fa', hp:6,  skills:['shield','moveSmall'] },
+  { name:'\ud154\ub808\ud3ec\ud130',   icon:'🌀', color:'#34d399', hp:7,  skills:['teleport'] },
+  { name:'\uce74\ub4dc \ube0c\ub808\uc774\ucee4', icon:'🃏', color:'#c084fc', hp:7,  skills:['cardbreak','moveSmall'], counter:true },
+  { name:'\ub9ac\ud38c\uc11c',         icon:'🔮', color:'#fb923c', hp:8, skills:['repulse','moveSmall'],    counter:true },
+  { name:'\ud540 \ud30c\uad34\uc790',  icon:'💀', color:'#f87171', hp:8, skills:['combobreak','pinbreak','moveSmall'], counter:true },
+  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'🌑', color:'#e879f9', hp:13, skills:['chaos','moveRandom'], counter:true },
 ];
 
 function initBoss() {
@@ -1947,7 +1985,7 @@ function stepPhysics() {
   // 자력장 — 구멍 근처에서 공을 자동으로 밀어냄 (1회용)
   const holeX = W / 2, holeY = H, holeR = W * 0.09;
   const holeEdgeY = H - 21; // flipBaseH=21
-  if (state.magnet) {
+  if (state.magnet && !state.fever) {  // 피버(목표초과) 시 자력장 미발동
     const dx2 = b.x - holeX, dy2 = b.y - holeY;
     const dist2 = Math.sqrt(dx2*dx2 + dy2*dy2);
     const magnetRange = holeR * 3.5;
@@ -2026,6 +2064,14 @@ function stepPhysics() {
     }
   }
 
+  // 맥스박스 방향 타이머 업데이트 (2~4초마다 방향 전환)
+  state._maxBoxTimer -= 16;
+  if (state._maxBoxTimer <= 0) {
+    state._maxBoxDir *= -1;
+    state._maxBoxTimer = 2000 + Math.random() * 2000;
+  }
+  const maxDir = state._maxBoxDir; // 1=오른쪽, -1=왼쪽
+
   // flipper boxes — diagonal, hole side 50% lower, wall side 10% higher
   const flipBaseH = 21;
   const flipTopH  = 37;
@@ -2042,18 +2088,14 @@ function stepPhysics() {
       const surfaceY = topAt(b.x);
       b.y = surfaceY - b.r - 1;
       if (b.x < midX) {
-        // MAX zone — 대각선 표면 법선 방향으로 튕김 (수직 아님)
+        // MAX zone — 타이머 기반 방향으로 강하게 튕김
         const maxSpeed = (4 + 100 * 0.09) * 1.1;
-        // 왼쪽 플리퍼: 표면이 왼쪽 높고 오른쪽 낮음 → 법선은 오른쪽 위 방향
-        const slopeAngle = Math.atan2(holeEdgeY - wallEdgeY, x1 - x0);
-        const nx = -Math.sin(slopeAngle), ny = -Math.cos(slopeAngle);
         const incomingSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
         const launchSpeed = Math.max(maxSpeed, incomingSpeed);
-        // vx는 반드시 오른쪽(양수) 방향으로 강제 — 왼쪽으로 거슬러 올라가는 현상 방지
-        b.vx = Math.abs(nx * launchSpeed * 0.55);
-        b.vy = -Math.abs(ny * launchSpeed);
+        b.vx = maxDir * Math.abs(launchSpeed * 0.7); // 방향 적용
+        b.vy = -Math.abs(launchSpeed * 0.85);
         SFX.max();
-        spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
+        spawnFloat(b.x, surfaceY - 14, maxDir > 0 ? 'MAX→' : '←MAX', '#fbbf24');
         state.chips += 20; updateHUD();
       } else {
         // SLIDE zone — reflect off slope, ball flows toward hole
@@ -2079,18 +2121,14 @@ function stepPhysics() {
       const surfaceY = topAt(b.x);
       b.y = surfaceY - b.r - 1;
       if (b.x > midX) {
-        // MAX zone — 대각선 표면 법선 방향으로 튕김 (수직 아님)
+        // MAX zone — 타이머 기반 방향으로 강하게 튕김
         const maxSpeed = (4 + 100 * 0.09) * 1.1;
-        // 오른쪽 플리퍼: 표면이 오른쪽 높고 왼쪽 낮음 → 법선은 왼쪽 위 방향
-        const slopeAngle = Math.atan2(wallEdgeY - holeEdgeY, x1 - x0);
-        const nx = Math.sin(slopeAngle), ny = -Math.cos(slopeAngle);
         const incomingSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
         const launchSpeed = Math.max(maxSpeed, incomingSpeed);
-        // vx는 반드시 왼쪽(음수) 방향으로 강제 — 오른쪽으로 거슬러 올라가는 현상 방지
-        b.vx = -Math.abs(nx * launchSpeed * 0.55);
-        b.vy = -Math.abs(ny * launchSpeed);
+        b.vx = maxDir * Math.abs(launchSpeed * 0.7); // 방향 적용
+        b.vy = -Math.abs(launchSpeed * 0.85);
         SFX.max();
-        spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
+        spawnFloat(b.x, surfaceY - 14, maxDir > 0 ? 'MAX→' : '←MAX', '#fbbf24');
         state.chips += 20; updateHUD();
       } else {
         // SLIDE zone — reflect off slope
@@ -2408,16 +2446,19 @@ function respawnCardPin(p) {
 // 5장 이상이면 최고 족보 5장만 남기고 나머지 버리기
 function trimTobestHand(newCard) {
   const full = [...state.hand, newCard];
-  if (full.length < 5) return full;
+  if (full.length <= 5) return full; // 5장 이하면 그냥 반환
 
-  // 5장짜리 조합 중 최고 족보 찾기
+  // 5장짜리 조합 중 최고 족보 + 같은 족보면 Chips 기준으로 선택
   const combos = getCombinations(full, 5);
-  let bestCombo = null, bestScore = -1;
+  let bestCombo = null, bestScore = -1, bestChips = -1;
   const handOrder = ['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시','로얄 플러시'];
   for (const combo of combos) {
     const h = getBestHand(combo);
     const score = handOrder.indexOf(h.name);
-    if (score > bestScore) { bestScore = score; bestCombo = combo; }
+    const chips = h.chips + combo.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+    if (score > bestScore || (score === bestScore && chips > bestChips)) {
+      bestScore = score; bestChips = chips; bestCombo = combo;
+    }
   }
   return bestCombo || full.slice(0, 5);
 }
@@ -2500,12 +2541,13 @@ function onCardHit(p) {
   const enhChance = baseEnhChance + enhBonus;
 
   if (p.type === 'mystery') {
-    // 덱에서 미사용 카드 중 랜덤 습득
-    const available = state.deck.filter(cd => !cd.used);
-    if (available.length) {
-      const picked = available[Math.floor(Math.random() * available.length)];
+    // 덱 미사용 카드 중 랜덤 습득 — 강화 없는 일반 카드
+    const available = state.deck.filter(cd => !cd.used && !cd.enhance);
+    const pool = available.length ? available : state.deck.filter(cd => !cd.used);
+    if (pool.length) {
+      const picked = pool[Math.floor(Math.random() * pool.length)];
       picked.used = true;
-      card = { rank: picked.rank, suit: picked.suit, enhance: Math.random() < enhChance ? (['bonus','mult','glass'][Math.floor(Math.random()*3)]) : null };
+      card = { rank: picked.rank, suit: picked.suit, enhance: null };
     } else {
       card = makeRandCard();
     }
@@ -2545,7 +2587,8 @@ function onCardHit(p) {
 
   // 피버(목표 초과) 중엔 7장까지 허용, 아니면 5장 초과 시 자동 정리
   const maxHand = state.fever ? 7 : 5;
-  if (state.hand.length >= maxHand - 1) {
+  if (state.hand.length >= maxHand) {
+    // 이미 maxHand 이상 → trim
     const trimmed = trimTobestHand(card);
     const discarded = state.hand.length + 1 - trimmed.length;
     state.hand = trimmed;
@@ -3016,7 +3059,7 @@ function updateHUD() {
   const bossAliveNow = state.roundIdx === 2 && state.boss && !state.boss.defeated;
   if (state.phase === 'fly' && finalScore >= target) {
     if (scoreVal) scoreVal.style.color = '#fbbf24';
-    if (!state.fever && !bossAliveNow) {
+    if (!state.fever && !bossAliveNow && !state._clearOverlay && !state._bossIntro) {
       // 일반 라운드 또는 보스 처치 후: 목표 달성 시 피버
       enterFeverMode('🎯 목표 달성!  Chips × 1.5');
     }
@@ -3070,6 +3113,63 @@ function triggerClear(finalScore, target) {
   showResultScreen('clear', fs, target);
 }
 
+// 클리어 딜레이: 공 낙하 후 CLEAR 텍스트 표시 → 결과창
+function delayClear(finalScore, target) {
+  SFX.clear();
+  state._clearOverlay = { mode: 'clear', timer: 90, score: finalScore, target };
+}
+
+function delayGameover(finalScore, target) {
+  state._clearOverlay = { mode: 'gameover', timer: 90, score: finalScore, target };
+}
+
+function drawClearOverlay() {
+  const ov = state._clearOverlay;
+  if (!ov) return;
+  ov.timer--;
+  if (ov.timer <= 0) {
+    state._clearOverlay = null;
+    if (ov.mode === 'clear') {
+      showResultScreen('clear', ov.score, ov.target);
+    } else {
+      const newBests = flushRunToRecords();
+      showResultScreen('gameover', ov.score, ov.target, newBests);
+    }
+    return;
+  }
+  const progress = 1 - ov.timer / 90;
+  const alpha = ov.timer < 20 ? ov.timer / 20 : Math.min(1, progress * 5);
+  const W = canvas.width, H = canvas.height;
+  const ctx2 = canvas.getContext('2d');
+  const isClear = ov.mode === 'clear';
+  ctx2.save();
+  // 반투명 배경
+  const bgColor = isClear ? `rgba(6,78,59,${alpha * 0.7})` : `rgba(127,29,29,${alpha * 0.7})`;
+  ctx2.fillStyle = bgColor;
+  ctx2.fillRect(0, 0, W, H);
+  // 스케일 인 효과
+  const scale = 0.6 + progress * 0.6;
+  ctx2.translate(W / 2, H / 2);
+  ctx2.scale(scale, scale);
+  // 메인 텍스트
+  ctx2.textAlign = 'center';
+  ctx2.textBaseline = 'middle';
+  const mainCol = isClear ? `rgba(52,211,153,${alpha})` : `rgba(248,113,113,${alpha})`;
+  ctx2.fillStyle = mainCol;
+  ctx2.font = 'bold 48px Space Mono, monospace';
+  ctx2.fillText(isClear ? 'CLEAR!' : 'GAME OVER', 0, -20);
+  // 서브 텍스트
+  ctx2.fillStyle = `rgba(251,191,36,${alpha})`;
+  ctx2.font = 'bold 14px Space Mono, monospace';
+  const need = ov.target - ov.score;
+  ctx2.fillText(isClear
+    ? ov.score.toLocaleString() + ' pts'
+    : '-' + need.toLocaleString() + ' pts 부족',
+    0, 28
+  );
+  ctx2.restore();
+}
+
 function triggerResult() {
   state.ball = null;
   state.totalChipsBank += state.chips;
@@ -3087,8 +3187,7 @@ function triggerResult() {
     if (finalScore >= target || state.turn >= 3) {
       state.phase = 'result';
       updateRunScore(state.stage, finalScore);
-      SFX.clear();
-      showResultScreen('clear', finalScore, target);
+      delayClear(finalScore, target);
       return;
     }
   } else if (isBossRound) {
@@ -3098,15 +3197,13 @@ function triggerResult() {
     if (scoreOk && bossOk) {
       state.phase = 'result';
       updateRunScore(state.stage, finalScore);
-      SFX.clear();
-      showResultScreen('clear', finalScore, target);
+      delayClear(finalScore, target);
       return;
     }
     if (state.turn >= 3) {
       state.phase = 'result';
       updateRunScore(state.stage, finalScore);
-      const newBests = flushRunToRecords();
-      showResultScreen('gameover', finalScore, target, newBests);
+      delayGameover(finalScore, target);
       return;
     }
   } else {
@@ -3114,15 +3211,13 @@ function triggerResult() {
     if (finalScore >= target) {
       state.phase = 'result';
       updateRunScore(state.stage, finalScore);
-      SFX.clear();
-      showResultScreen('clear', finalScore, target);
+      delayClear(finalScore, target);
       return;
     }
     if (state.turn >= 3) {
       state.phase = 'result';
       updateRunScore(state.stage, finalScore);
-      const newBests = flushRunToRecords();
-      showResultScreen('gameover', finalScore, target, newBests);
+      delayGameover(finalScore, target);
       return;
     }
   }
@@ -3302,14 +3397,14 @@ function draw() {
 
   // D: 피버 모드 테두리 글로우
   if (state.fever) {
-    const t = Date.now() / 200;
-    const alpha = 0.4 + Math.sin(t) * 0.25;
+    const t = Date.now() / 120;
+    const alpha = 0.55 + Math.sin(t) * 0.4;
     ctx.save();
-    ctx.strokeStyle = `rgba(248,113,113,${alpha})`;
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, W - 8, H - 8);
-    ctx.strokeStyle = `rgba(251,191,36,${alpha * 0.6})`;
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = `rgba(255,80,80,${alpha})`;
+    ctx.lineWidth = 10;
+    ctx.strokeRect(2, 2, W - 4, H - 4);
+    ctx.strokeStyle = `rgba(255,200,50,${alpha * 0.8})`;
+    ctx.lineWidth = 4;
     ctx.strokeRect(10, 10, W - 20, H - 20);
     ctx.restore();
   } else if (state.combo >= 10) {
@@ -3323,8 +3418,15 @@ function draw() {
   }
 
   // background grid
-  ctx.strokeStyle = state.fever ? '#2d1a1a' : '#1e2533';
-  ctx.lineWidth = 0.5;
+  if (state.fever) {
+    const tf = Date.now() / 180;
+    const fAlpha = 0.18 + Math.sin(tf) * 0.15;
+    ctx.strokeStyle = `rgba(248,113,113,${fAlpha})`;
+    ctx.lineWidth = 1.0;
+  } else {
+    ctx.strokeStyle = '#1e2533';
+    ctx.lineWidth = 0.5;
+  }
   for (let x = 0; x < W; x += 24) {
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
   }
@@ -3361,28 +3463,39 @@ function draw() {
     const topAtMid = wallEdgeY + (holeEdgeY - wallEdgeY) * maxRatio;
     const topAtX1  = holeEdgeY;
 
-    // MAX zone (wall side, x0→midX) — gold fill
+    // MAX zone — 원래 금색
+    const pulse = 0.7 + Math.sin(Date.now() / 300) * 0.3;
     ctx.beginPath();
     ctx.moveTo(x0,   topAtX0);
     ctx.lineTo(midX, topAtMid);
     ctx.lineTo(midX, H);
     ctx.lineTo(x0,   H);
     ctx.closePath();
-    ctx.fillStyle = '#422006'; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
+    ctx.fillStyle = `rgba(251,191,36,${pulse * 0.35})`; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
     ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('MAX↑', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 10);
+    ctx.fillText('MAX', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 10);
 
-    // SLIDE zone (hole side, midX→x1) — dim fill
+    // SLIDE zone — 방향별 색상 + 피버 반짝임
+    const slideT = Date.now() / 250;
+    const sDir = state._maxBoxDir || 1;
+    const sBaseFill   = sDir > 0 ? `rgba(59,130,246,${0.15 + Math.sin(slideT)*0.08})` : `rgba(239,68,68,${0.15 + Math.sin(slideT)*0.08})`;
+    const sBaseStroke = sDir > 0 ? `rgba(59,130,246,${0.4 + Math.sin(slideT)*0.2})` : `rgba(239,68,68,${0.4 + Math.sin(slideT)*0.2})`;
+    const sBaseLabel  = sDir > 0 ? '#60a5fa' : '#f87171';
+    const feverFill   = `rgba(248,113,113,${0.2 + Math.sin(slideT)*0.15})`;
+    const feverStroke = `rgba(248,113,113,${0.5 + Math.sin(slideT)*0.3})`;
     ctx.beginPath();
     ctx.moveTo(midX, topAtMid);
     ctx.lineTo(x1,   topAtX1);
     ctx.lineTo(x1,   H);
     ctx.lineTo(midX, H);
     ctx.closePath();
-    ctx.fillStyle = '#1e2a1e'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1;
+    ctx.fillStyle   = state.fever ? feverFill   : sBaseFill;
+    ctx.strokeStyle = state.fever ? feverStroke : sBaseStroke;
+    ctx.lineWidth = 1.5;
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#6b7280'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = state.fever ? `rgba(248,113,113,0.9)` : sBaseLabel;
+    ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
     ctx.fillText('↘', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 9);
   }
 
@@ -3396,29 +3509,40 @@ function draw() {
     const topAtMid = holeEdgeY + (wallEdgeY - holeEdgeY) * slideRatio;
     const topAtX1  = wallEdgeY;
 
-    // SLIDE zone (hole side, x0→midX)
+    // SLIDE zone — 방향별 색상 + 피버 반짝임
+    const slideT2 = Date.now() / 250;
+    const sDir2 = state._maxBoxDir || 1;
+    const sBaseFill2   = sDir2 > 0 ? `rgba(59,130,246,${0.15 + Math.sin(slideT2)*0.08})` : `rgba(239,68,68,${0.15 + Math.sin(slideT2)*0.08})`;
+    const sBaseStroke2 = sDir2 > 0 ? `rgba(59,130,246,${0.4 + Math.sin(slideT2)*0.2})` : `rgba(239,68,68,${0.4 + Math.sin(slideT2)*0.2})`;
+    const sBaseLabel2  = sDir2 > 0 ? '#60a5fa' : '#f87171';
+    const feverFill2   = `rgba(248,113,113,${0.2 + Math.sin(slideT2)*0.15})`;
+    const feverStroke2 = `rgba(248,113,113,${0.5 + Math.sin(slideT2)*0.3})`;
     ctx.beginPath();
     ctx.moveTo(x0,   topAtX0);
     ctx.lineTo(midX, topAtMid);
     ctx.lineTo(midX, H);
     ctx.lineTo(x0,   H);
     ctx.closePath();
-    ctx.fillStyle = '#1e2a1e'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1;
+    ctx.fillStyle   = state.fever ? feverFill2   : sBaseFill2;
+    ctx.strokeStyle = state.fever ? feverStroke2 : sBaseStroke2;
+    ctx.lineWidth = 1.5;
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#6b7280'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = state.fever ? `rgba(248,113,113,0.9)` : sBaseLabel2;
+    ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
     ctx.fillText('↙', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 9);
 
-    // MAX zone (wall side, midX→x1)
+    // MAX zone — 원래 금색
+    const pulse2 = 0.7 + Math.sin(Date.now() / 300) * 0.3;
     ctx.beginPath();
     ctx.moveTo(midX, topAtMid);
     ctx.lineTo(x1,   topAtX1);
     ctx.lineTo(x1,   H);
     ctx.lineTo(midX, H);
     ctx.closePath();
-    ctx.fillStyle = '#422006'; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
+    ctx.fillStyle = `rgba(251,191,36,${pulse2 * 0.35})`; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
     ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('↑MAX', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 10);
+    ctx.fillText('MAX', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 10);
   }
 
   // aim line (mouse-angle based)
@@ -3809,6 +3933,10 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.fillText('S L O W', W / 2, H * 0.88 - 45);
   }
+  // 클리어/게임오버 오버레이
+  if (state._clearOverlay) drawClearOverlay();
+  // 보스 인트로 오버레이
+  if (state._bossIntro) drawBossIntro();
 }
 
 // --- GAME LOOP ---
@@ -4110,6 +4238,8 @@ function resetGame() {
   state.totalChipsBank = 0;
   state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
   state.boss = null;
+  state._clearOverlay = null;
+  state._bossIntro = null;
   shopState.coins = 4; shopState.rerollCost = 5;
   Object.keys(planetBonus).forEach(k => delete planetBonus[k]);
   pinUpgrades.normal = 0; pinUpgrades.spring = 0; pinUpgrades.card = 0; pinUpgrades.spring_add = 0; pinUpgrades.max_box = 0;
@@ -4259,35 +4389,148 @@ function updateDeckBtn() {
   document.getElementById('deck-btn').textContent = '덱 보기 (' + remaining + ')';
 }
 
+function switchDeckTab(tab) {
+  const views = ['cards','levels','all','remaining','used'];
+  const btnIds = { levels:'deck-lvl-btn', all:'deck-all-btn', remaining:'deck-rem-btn', used:'deck-used-btn' };
+  // 모든 뷰 숨김
+  views.forEach(v => {
+    const el = document.getElementById('deck-view-' + v);
+    if (el) el.style.display = 'none';
+  });
+  // 모든 버튼 비활성
+  Object.values(btnIds).forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) { btn.style.background = ''; btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)'; }
+  });
+  // 선택 뷰 표시
+  const target = document.getElementById('deck-view-' + tab);
+  if (target) target.style.display = 'block';
+  // 선택 버튼 활성
+  const activeBtnId = btnIds[tab];
+  if (activeBtnId) {
+    const btn = document.getElementById(activeBtnId);
+    if (btn) { btn.style.background = 'var(--chip-col)'; btn.style.color = '#0d1117'; btn.style.borderColor = 'var(--chip-col)'; }
+  }
+  // 기본 카드뷰엔 버튼 없음 — cards는 기본
+  if (tab === 'cards') {
+    const el = document.getElementById('deck-view-cards');
+    if (el) el.style.display = 'block';
+  }
+}
+
 function renderDeckViewer() {
   // stats
   const used = state.deck.filter(c => c.used).length;
-  const remaining = 52 - used;
+  const remaining = state.deck.length - used;
   const inHand = state.hand.length;
   const statsEl = document.getElementById('deck-stats');
   statsEl.innerHTML = `
-    <div class="dstat">전체 <span>52</span></div>
-    <div class="dstat">남은 덱 <span>${remaining}</span></div>
-    <div class="dstat">사용됨 <span>${used}</span></div>
+    <div class="dstat" id="deck-lvl-btn" onclick="switchDeckTab('levels')" style="cursor:pointer;border-color:var(--chip-col);color:var(--chip-col)">족보 레벨</div>
+    <div class="dstat" id="deck-all-btn" onclick="switchDeckTab('all')" style="cursor:pointer;border-color:var(--border);color:var(--muted)">전체 <span>${state.deck.length}</span></div>
+    <div class="dstat" id="deck-rem-btn" onclick="switchDeckTab('remaining')" style="cursor:pointer;border-color:var(--border);color:var(--muted)">남은 덱 <span>${remaining}</span></div>
+    <div class="dstat" id="deck-used-btn" onclick="switchDeckTab('used')" style="cursor:pointer;border-color:var(--border);color:var(--muted)">사용됨 <span>${used}</span></div>
     <div class="dstat">손패 <span>${inHand}/7</span></div>
   `;
 
-  // hand cards section
-  const handEl = document.getElementById('deck-hand-cards');
-  handEl.innerHTML = '';
-  if (state.hand.length === 0) {
-    handEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">아직 카드 없음</div>';
-  } else {
-    state.hand.forEach(c => handEl.appendChild(makeDCard(c, 'in-hand')));
+  // 족보 레벨 표시
+  const levelsEl = document.getElementById('deck-hand-levels');
+  if (levelsEl) {
+    const bonusMap = {
+      '하이카드':{chips:10,mult:1},'원페어':{chips:15,mult:1},'투페어':{chips:20,mult:2},
+      '트리플':{chips:20,mult:2},'스트레이트':{chips:30,mult:3},'플러시':{chips:15,mult:2},
+      '풀하우스':{chips:25,mult:2},'포카드':{chips:30,mult:3},
+    };
+    const baseData = {
+      '하이카드':{chips:5,mult:1},'원페어':{chips:10,mult:2},'투페어':{chips:20,mult:2},
+      '트리플':{chips:30,mult:3},'스트레이트':{chips:30,mult:4},'플러시':{chips:35,mult:4},
+      '풀하우스':{chips:40,mult:4},'포카드':{chips:60,mult:7},
+    };
+    levelsEl.innerHTML = '';
+    Object.keys(bonusMap).forEach(hand => {
+      const pb = planetBonus[hand] || {chips:0, mult:0};
+      const base = baseData[hand] || {chips:0, mult:0};
+      const lv = Math.max(0, Math.round((pb.chips / bonusMap[hand].chips)));
+      const hasBonus = pb.chips > 0 || pb.mult > 0;
+      const div = document.createElement('div');
+      div.style.cssText = `padding:6px 8px;border-radius:5px;background:${hasBonus ? '#0d2a1e' : 'var(--bg2)'};
+        border:1px solid ${hasBonus ? '#34d399' : 'var(--border)'};font-family:'Space Mono',monospace;font-size:10px`;
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-weight:700;color:${hasBonus ? '#34d399' : 'var(--muted)'}">${hand}</span>
+          <span style="color:var(--gold);font-size:9px">Lv.${lv + 1}</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted)">
+          C: ${base.chips + pb.chips} &nbsp; M: ×${base.mult + pb.mult}
+          ${hasBonus ? `<span style="color:#34d399"> (+${pb.chips}C +${pb.mult}M)</span>` : ''}
+        </div>`;
+      levelsEl.appendChild(div);
+    });
   }
 
-  // full deck by suit
+  // 전체 카드 뷰 (무늬별)
+  const handAllEl = document.getElementById('deck-hand-cards-all');
+  if (handAllEl) {
+    handAllEl.innerHTML = '';
+    if (state.hand.length === 0) handAllEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">아직 카드 없음</div>';
+    else state.hand.forEach(c => handAllEl.appendChild(makeDCard(c, 'in-hand')));
+  }
+  for (const suit of SUITS) {
+    const g = document.getElementById('dg-all-' + suit);
+    if (!g) continue;
+    g.innerHTML = '';
+    const cards = state.deck.filter(c => c.suit === suit).sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
+    cards.forEach(c => {
+      const inH = state.hand.find(h => h.rank === c.rank && h.suit === c.suit);
+      g.appendChild(makeDCard(c, inH ? 'in-hand' : (c.used ? 'used' : '')));
+    });
+  }
+
+  // 남은 덱 뷰 (미사용 카드만)
+  for (const suit of SUITS) {
+    const g = document.getElementById('dg-rem-' + suit);
+    if (!g) continue;
+    g.innerHTML = '';
+    const cards = state.deck.filter(c => c.suit === suit && !c.used).sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
+    cards.forEach(c => g.appendChild(makeDCard(c, '')));
+    if (cards.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:10px;color:var(--muted);font-family:Space Mono,monospace;padding:4px';
+      empty.textContent = SUITS.indexOf(suit) === 0 ? '♥' : SUITS.indexOf(suit) === 1 ? '♦' : SUITS.indexOf(suit) === 2 ? '♣' : '♠';
+      g.appendChild(empty);
+    }
+  }
+
+  // hand cards section (기본 카드 뷰용)
+  const handEl = document.getElementById('deck-hand-cards');
+  if (handEl) {
+    handEl.innerHTML = '';
+    if (state.hand.length === 0) handEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">아직 카드 없음</div>';
+    else state.hand.forEach(c => handEl.appendChild(makeDCard(c, 'in-hand')));
+  }
+
+  // 기본 카드 뷰 (deck-view-cards 내 손패만)
+  const handElBase = document.getElementById('deck-hand-cards');
+  if (handElBase) {
+    handElBase.innerHTML = '';
+    if (state.hand.length === 0) handElBase.innerHTML = '<div style="font-size:11px;color:var(--muted)">아직 카드 없음</div>';
+    else state.hand.forEach(c => handElBase.appendChild(makeDCard(c, 'in-hand')));
+  }
+
+  // 사용된 카드 뷰
+  for (const suit of SUITS) {
+    const g = document.getElementById('dg-used-' + suit);
+    if (!g) continue;
+    g.innerHTML = '';
+    const cards = state.deck.filter(c => c.suit === suit && c.used).sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
+    cards.forEach(c => g.appendChild(makeDCard(c, 'used')));
+  }
+
+  // full deck by suit (기본 뷰)
   for (const suit of SUITS) {
     const grid = document.getElementById('dg-' + suit);
+    if (!grid) continue;
     grid.innerHTML = '';
-    const suitCards = state.deck.filter(c => c.suit === suit);
-    // sort by rank value desc
-    suitCards.sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
+    const suitCards = state.deck.filter(c => c.suit === suit).sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
     for (const c of suitCards) {
       const inHand = state.hand.find(h => h.rank === c.rank && h.suit === c.suit);
       const cls = inHand ? 'in-hand' : (c.used ? 'used' : '');
@@ -4343,7 +4586,7 @@ const PACK_POOL = [
 ];
 const PLANET_POOL = [
   { name:'갤럭시 카드', desc:'모든 족보 레벨 +1 (전 족보 Chips·Mult 상승)', price:6, hand:'all' },
-  { name:'점성술 팩',   desc:'랜덤 족보 1개 레벨 +1',                        price:5, hand:'random' },
+  { name:'점성술 팩',   desc:'랜덤 족보 1개 레벨 +1',                        price:2, hand:'random' },
 ];
 const CONSUMABLE_POOL = [
   { name:'와일드카드 주문서', desc:'손패 마지막 카드를 와일드로 변환', price:5, type:'consumable' },
@@ -4363,7 +4606,12 @@ function randFrom(arr, n) {
 }
 
 function makeRandCard() {
-  const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+  // 덱에서 사용된(used) 카드들의 RANK_VAL 최솟값 이상의 랭크만 추가
+  const usedVals = state.deck ? state.deck.filter(cd => cd.used).map(cd => RANK_VAL[cd.rank]) : [];
+  const minVal = usedVals.length ? Math.min(...usedVals) : 2;
+  const available = RANKS.filter(r => RANK_VAL[r] >= minVal);
+  const rankPool = available.length ? available : RANKS;
+  const rank = rankPool[Math.floor(Math.random() * rankPool.length)];
   const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
   return { rank, suit, enhance: null, used: false };
 }
@@ -4823,6 +5071,70 @@ function closeShopAndPlay() {
   const summary = document.getElementById('coin-summary');
   if (summary) summary.style.display = 'none';
   resetRound();
+  // 보스 라운드면 인트로 오버레이 표시
+  if (state.roundIdx === 2 && state.boss) {
+    showBossIntro();
+  }
+}
+
+function showBossIntro() {
+  state.phase = 'paused_fever'; // 게임 일시 정지
+  state._bossIntro = { timer: 120 }; // 2초
+}
+
+function drawBossIntro() {
+  const bi = state._bossIntro;
+  if (!bi) return;
+  bi.timer--;
+  if (bi.timer <= 0) {
+    state._bossIntro = null;
+    state.phase = 'aim';
+    return;
+  }
+  const progress = 1 - bi.timer / 120;
+  const alpha = bi.timer < 25 ? bi.timer / 25 : Math.min(1, progress * 4);
+  const W = canvas.width, H = canvas.height;
+  const ctx2 = canvas.getContext('2d');
+  const boss = state.boss;
+  ctx2.save();
+
+  // 배경
+  ctx2.fillStyle = `rgba(13,17,23,${alpha * 0.85})`;
+  ctx2.fillRect(0, 0, W, H);
+
+  // 스케일 인
+  const scale = 0.7 + progress * 0.3;
+  ctx2.translate(W / 2, H / 2);
+  ctx2.scale(scale, scale);
+  ctx2.textAlign = 'center';
+  ctx2.textBaseline = 'middle';
+
+  // BOSS STAGE 라벨
+  ctx2.fillStyle = `rgba(248,113,113,${alpha * 0.8})`;
+  ctx2.font = 'bold 13px Space Mono, monospace';
+  ctx2.fillText('★  BOSS STAGE  ★', 0, -70);
+
+  // 보스 이름
+  const col = boss ? boss.color || '#f87171' : '#f87171';
+  ctx2.fillStyle = col.replace('#', 'rgba(').slice(0, -1) + ',' + alpha + ')';
+  ctx2.font = 'bold 32px Arial';
+  ctx2.fillText(boss ? boss.icon : '👾', 0, -28);
+
+  ctx2.fillStyle = `rgba(226,232,240,${alpha})`;
+  ctx2.font = 'bold 22px Space Mono, monospace';
+  ctx2.fillText(boss ? boss.name : 'BOSS', 0, 14);
+
+  // HP
+  ctx2.fillStyle = `rgba(248,113,113,${alpha * 0.9})`;
+  ctx2.font = 'bold 12px Space Mono, monospace';
+  ctx2.fillText('HP  ' + (boss ? boss.maxHp : '?'), 0, 44);
+
+  // 스테이지 정보
+  ctx2.fillStyle = `rgba(107,114,128,${alpha * 0.8})`;
+  ctx2.font = '11px Space Mono, monospace';
+  ctx2.fillText('ST' + (state.stage + 1) + '  보스라운드', 0, 68);
+
+  ctx2.restore();
 }
 
 // ── INIT ──────────────────────────────────────────────────
