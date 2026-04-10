@@ -416,7 +416,7 @@
     padding: 10px 14px; display: flex; align-items: center;
     justify-content: space-between; flex-shrink: 0;
   }
-  .shop-title { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; }
+  .shop-title { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; text-align: center; flex: 1; }
   .shop-coin {
     font-family: 'Space Mono', monospace; font-size: 13px;
     font-weight: 700; color: var(--gold);
@@ -425,6 +425,7 @@
   .shop-section-title {
     font-size: 10px; font-weight: 700; color: var(--muted);
     letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 8px;
+    text-align: center;
   }
   .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .shop-item {
@@ -477,6 +478,7 @@
     transition: background 0.15s; margin-left: auto;
   }
   .shop-reroll:hover { background: var(--bg3); }
+  #shop-reroll:hover { background: var(--bg2) !important; border-color: var(--gold) !important; color: var(--text) !important; }
   .shop-stage-info {
     margin: 8px 12px; padding: 8px 12px;
     background: var(--bg2); border: 1px solid var(--border);
@@ -510,7 +512,7 @@
       <div class="hud-label">턴</div>
       <div class="hud-val" id="hturn" style="color:var(--text)">1 / 3</div>
     </div>
-    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v7</div>
+    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v8</div>
   </div>
 
   <!-- BLIND PROGRESS -->
@@ -617,21 +619,32 @@
       <div class="shop-coin">💰 <span id="shop-coins">4</span></div>
     </div>
     <div class="shop-stage-info" id="shop-stage-info"></div>
-    <div class="shop-section">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="shop-section-title">조커</div>
-        <button class="shop-reroll" id="shop-reroll">리롤 $<span id="reroll-cost">5</span></button>
-      </div>
-      <div class="shop-grid" id="shop-jokers"></div>
+    <!-- 코인 정산 + 리롤 버튼 -->
+    <div style="display:flex;gap:8px;margin:0 12px 10px;align-items:stretch">
+      <div id="coin-summary" style="flex:1;padding:10px 12px;background:var(--bg3);border-radius:6px;font-size:11px;font-family:'Space Mono',monospace;color:#6ee7b7;white-space:pre-line;display:none"></div>
+      <button id="shop-reroll" style="flex:1;padding:14px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:background 0.15s">
+        <span style="font-size:26px">🎲</span>
+        <span>리롤</span>
+        <span style="color:var(--gold)">$<span id="reroll-cost">5</span></span>
+      </button>
     </div>
+    <!-- 리롤 대상: 조커 + 플래닛&소모품 -->
+    <div style="margin:0 12px 10px;border:1px solid #2d4a6e;border-radius:8px;padding:10px;background:var(--bg2)">
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px">
+        <span style="font-size:9px;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace;letter-spacing:0.07em">🎲 리롤 시 변경됩니다</span>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:0.07em;text-transform:uppercase;text-align:center;margin-bottom:6px">조커</div>
+      <div class="shop-grid" id="shop-jokers" style="margin-bottom:10px"></div>
+      <div style="border-top:1px solid var(--border);margin-bottom:8px"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:0.07em;text-transform:uppercase;text-align:center;margin-bottom:6px">플래닛 & 소모품</div>
+      <div class="shop-grid" id="shop-misc"></div>
+    </div>
+    <!-- 카드팩 -->
     <div class="shop-section">
       <div class="shop-section-title">카드 팩</div>
       <div class="shop-grid" id="shop-packs"></div>
     </div>
-    <div class="shop-section">
-      <div class="shop-section-title">플래닛 & 소모품</div>
-      <div class="shop-grid" id="shop-misc"></div>
-    </div>
+    <!-- 핀 업그레이드 -->
     <div class="shop-section">
       <div class="shop-section-title">핀 업그레이드</div>
       <div class="shop-grid" id="shop-pin-upgrades"></div>
@@ -640,7 +653,6 @@
       <button class="shop-btn" id="shop-pass">패스 (+$3)</button>
       <button class="shop-btn next" id="shop-next">다음 블라인드 →</button>
     </div>
-    <div id="coin-summary" style="margin:0 12px 14px;padding:10px 12px;background:var(--bg3);border-radius:var(--border-radius-md);font-size:11px;font-family:'Space Mono',monospace;color:#6ee7b7;line-height:1.7;display:none"></div>
   </div>
 
   <!-- RESULT OVERLAY -->
@@ -832,6 +844,7 @@ const HAND_DATA = {
   '더블 풀하우스': {chips:90, mult:5,xmult:3.0},   // 트리플+페어+페어
 };
 const STAGE_TARGETS = [5000, 15000, 50000, 150000, 400000, 900000, 2000000, 5000000];
+const _TEST_MODE = false;
 
 // 핀 업그레이드 정의 (각 항목 최대 Lv3)
 const PIN_UPGRADE_DEFS = [
@@ -851,6 +864,7 @@ const PIN_UPGRADE_DEFS = [
     price: [4, 6, 9],
     maxLv: 3,
   },
+  /* 카드 핀 강화는 카드팩으로 대체 - 비활성화
   {
     id: 'card',
     name: '카드 핀 강화',
@@ -859,6 +873,7 @@ const PIN_UPGRADE_DEFS = [
     price: [5, 7, 10],
     maxLv: 3,
   },
+  */
   {
     id: 'spring_add',
     name: '스프링 핀 추가',
@@ -1116,10 +1131,10 @@ const BOSS_DATA = [
   { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'👿', color:'#c084fc', hp:8,  skills:['move'] },
   { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'🛡', color:'#60a5fa', hp:8,  skills:['shield','moveSmall'] },
   { name:'\ud154\ub808\ud3ec\ud130',   icon:'🌀', color:'#34d399', hp:9,  skills:['teleport'] },
-  { name:'\ucf64\ubcf4 \ube0c\ub808\uc774\ucee4', icon:'⚡', color:'#fbbf24', hp:9,  skills:['combobreak','moveSmall'], counter:true },
+  { name:'\uce74\ub4dc \ube0c\ub808\uc774\ucee4', icon:'🃏', color:'#c084fc', hp:9,  skills:['cardbreak','moveSmall'], counter:true },
   { name:'\ub9ac\ud38c\uc11c',         icon:'🔮', color:'#fb923c', hp:10, skills:['repulse','moveSmall'],    counter:true },
   { name:'\ud540 \ud30c\uad34\uc790',  icon:'💀', color:'#f87171', hp:10, skills:['combobreak','pinbreak','moveSmall'], counter:true },
-  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'🌑', color:'#e879f9', hp:15, skills:['chaos'], counter:true },
+  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'🌑', color:'#e879f9', hp:15, skills:['chaos','moveRandom'], counter:true },
 ];
 
 function initBoss() {
@@ -1140,9 +1155,10 @@ function initBoss() {
     moveDir:1, moveSpeed:1.2,
     shieldActive:false, shieldTimer:0, shieldCooldown:5000,
     teleportCooldown:5000, teleportWarn:false, teleportWarnTimer:0,
-    skillTimer:8000, skillLabel:'', skillLabelTimer:0,
-    chaosSkills:['move','shield','teleport','combobreak','repulse','pinbreak'],
-    chaosActive:'', chaosCooldown:10000,
+    skillTimer:2000, skillLabel:'', skillLabelTimer:0,
+    chaosSkills:['shield','teleport','cardbreak','repulse','pinbreak'],
+    chaosActive:'', chaosCooldown:5000,
+    moveRandomActive: true, moveRandomTimer: 3000, // 이동/정지 랜덤 전환
   };
 }
 
@@ -1164,6 +1180,25 @@ function stepBossSkills(boss, b, W, H) {
   const sk = boss.skills;
   const ca = boss.chaosActive;
 
+  // moveRandom: 이동/정지를 랜덤 주기로 전환
+  if (sk.includes('moveRandom')) {
+    boss.moveRandomTimer -= dt;
+    if (boss.moveRandomTimer <= 0) {
+      boss.moveRandomActive = !boss.moveRandomActive;
+      // 이동: 1~3초, 정지: 0.5~2초 랜덤
+      boss.moveRandomTimer = boss.moveRandomActive
+        ? 1000 + Math.random() * 2000
+        : 500  + Math.random() * 1500;
+    }
+    if (boss.moveRandomActive) {
+      boss.x += boss.moveDir * boss.moveSpeed;
+      const lim = W * 0.35;
+      if (Math.abs(boss.x - W/2) > lim) {
+        boss.moveDir *= -1;
+        boss.x = W/2 + lim * Math.sign(boss.x - W/2);
+      }
+    }
+  }
   if (sk.includes('move') || ca === 'move') {
     boss.x += boss.moveDir * boss.moveSpeed;
     const lim = W * 0.35;
@@ -1243,39 +1278,110 @@ function stepBossSkills(boss, b, W, H) {
   if (sk.includes('pinbreak') || ca === 'pinbreak') {
     boss.skillTimer -= dt;
     if (boss.skillTimer <= 0) {
-      boss.skillTimer = 3000; // 3초마다
-      // 특수 핀(인력·척력·폭발·이동·깜빡) 중 랜덤 1개 제거
+      boss.skillTimer = 2000; // 2초마다
       const specials = state.pins.filter(p => p.alive && (
         p.type === 'magnet_pull' || p.type === 'magnet_push' ||
         p.type === 'bomb' || p.moving || p.blink
       ));
       if (specials.length > 0) {
-        const target = specials[Math.floor(Math.random() * specials.length)];
-        target.alive = false;
+        const tgt = specials[Math.floor(Math.random() * specials.length)];
+        tgt.alive = false;
+        // 이펙트: 파괴 위치 저장
+        if (!boss._pinBreakFx) boss._pinBreakFx = [];
+        boss._pinBreakFx.push({ x: tgt.x, y: tgt.y, timer: 40 });
+        // 보스 측 이펙트: 보스에서 핀 방향으로 빔 발사
+        if (!boss._pinBreakBeam) boss._pinBreakBeam = [];
+        boss._pinBreakBeam.push({ tx: tgt.x, ty: tgt.y, timer: 20 });
         boss.skillLabel = '\ud83d\udc80 \ud540 \ud30c\uad34!'; boss.skillLabelTimer = 1000;
-        spawnFloat(target.x, target.y, '\ud83d\udc80', '#f87171');
+        spawnFloat(tgt.x, tgt.y - 16, '\ud83d\udc80 \ud30c\uad34!', '#f87171');
         showNotif('\ud83d\udc80 \ud2b9\uc218 \ud540 \uc81c\uac70!', '#f87171');
       }
-      // 특수 핀이 없으면 아무것도 안 함
+    }
+    // 이펙트 타이머 감소
+    if (boss._pinBreakFx) {
+      boss._pinBreakFx = boss._pinBreakFx.filter(fx => fx.timer-- > 0);
+    }
+    if (boss._pinBreakBeam) {
+      boss._pinBreakBeam = boss._pinBreakBeam.filter(bm => bm.timer-- > 0);
     }
   }
 
   if (sk.includes('chaos')) {
     boss.chaosCooldown -= dt;
     if (boss.chaosCooldown <= 0) {
-      boss.chaosCooldown = 10000;
+      boss.chaosCooldown = 5000;
       boss.chaosActive = boss.chaosSkills[Math.floor(Math.random()*boss.chaosSkills.length)];
       boss.shieldActive=false; boss.shieldCooldown=0; boss.teleportCooldown=0;
-      boss.teleportWarn=false; boss.skillTimer=0;
+      boss.teleportWarn=false;
+      // pinbreak 전환 시 즉시 발동 방지 — 2초 딜레이 부여
+      boss.skillTimer = boss.chaosActive === 'pinbreak' ? 2000 : 0;
       const lbl = {move:'\uc774\ub3d9',shield:'\ubc29\uc5b4\ub9c9',teleport:'\uc21c\uac04\uc774\ub3d9',
-        combobreak:'\ucf54\uc0a4 \ube0c\ub808\uc774\ucee4',repulse:'\ucca8\ub825 \ud544\ub4dc',pinbreak:'\ud540 \ud30c\uad34'}[boss.chaosActive] || '';
+        cardbreak:'\uce74\ub4dc \ud30c괴',repulse:'\ucca8\ub825 \ud544\ub4dc',pinbreak:'\ud540 \ud30c\uad34'}[boss.chaosActive] || '';
       boss.skillLabel = '\ud83c\udf11 '+lbl+'!'; boss.skillLabelTimer = 1500;
       spawnFloat(boss.x, boss.y-24, boss.skillLabel, '#e879f9');
       showNotif('\ud83c\udf11 \uce74\uc624\uc2a4: '+lbl+'!', '#e879f9');
     }
   }
 
+  // cardbreak 자동 발동: 5초마다 손패 카드 1장 자동 파괴
+  if (sk.includes('cardbreak') || ca === 'cardbreak') {
+    if (!boss._cardTimer) boss._cardTimer = 5000;
+    boss._cardTimer -= dt;
+    if (boss._cardTimer <= 0) {
+      boss._cardTimer = 5000;
+      if (state.hand.length > 0) {
+        const idx = Math.floor(Math.random() * state.hand.length);
+        const card = state.hand.splice(idx, 1)[0];
+        if (!boss._cardBreakFx) boss._cardBreakFx = [];
+        const startX = boss.x, startY = boss.y + boss.r + 10;
+        const targetX = canvas.width * 0.5;
+        const canvasRect = canvas.getBoundingClientRect();
+        const handPanel = document.getElementById('hand-panel');
+        const handRect = handPanel ? handPanel.getBoundingClientRect() : null;
+        const targetY = handRect
+          ? (handRect.top - canvasRect.top) * (canvas.height / canvasRect.height)
+          : canvas.height + 40;
+        const totalFrames = 30;
+        boss._cardBreakFx.push({
+          text: card.rank + (card.suit==='heart'?'♥':card.suit==='diamond'?'♦':card.suit==='club'?'♣':'♠'),
+          suit: card.suit,
+          x: startX, y: startY,
+          startX, startY, targetX, targetY,
+          vx: (targetX-startX)/totalFrames,
+          vy: (targetY-startY)/totalFrames,
+          timer: totalFrames, totalFrames,
+          alpha: 1.0, phase: 'fly', explodeTimer: 0,
+        });
+        boss.skillLabel = '\uD83C\uDCCF \uc790\ub3d9 \ud30c\uad34!'; boss.skillLabelTimer = 1200;
+        spawnFloat(boss.x, boss.y - 24, '\uD83C\uDCCF \uc790\ub3d9 \ud30c\uad34!', '#c084fc');
+        showNotif('\uD83C\uDCCF \uce74\ub4dc \uc790\ub3d9 \ud30c\uad34!', '#c084fc');
+        renderHand();
+      }
+    }
+  }
+
   if (boss.skillLabelTimer > 0) boss.skillLabelTimer -= dt;
+
+  // 카드 파괴 이펙트 업데이트
+  if (boss._cardBreakFx) {
+    boss._cardBreakFx = boss._cardBreakFx.filter(fx => {
+      if (fx.phase === 'fly') {
+        fx.timer--;
+        fx.x += fx.vx;
+        fx.y += fx.vy;
+        fx.alpha = 0.7 + 0.3 * Math.sin(fx.timer * 0.5);
+        if (fx.timer <= 0) {
+          fx.phase = 'explode';
+          fx.explodeTimer = 25;
+        }
+        return true;
+      } else {
+        fx.explodeTimer--;
+        fx.alpha = fx.explodeTimer / 25;
+        return fx.explodeTimer > 0;
+      }
+    });
+  }
 }
 
 function stepBoss() {
@@ -1319,6 +1425,54 @@ function stepBoss() {
     const nx=dx/dist, ny=dy/dist;
     b.x+=nx*(minDist-dist)*0.5; b.y+=ny*(minDist-dist)*0.5;
     const dot=b.vx*nx+b.vy*ny; b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+
+    if (boss.skills.includes('cardbreak') || boss.chaosActive==='cardbreak') {
+      if (state.hand.length > 0) {
+        const count = boss.hp <= Math.floor(boss.maxHp*0.4) ? 2 : 1;
+        const removed = [];
+        for (let i = 0; i < count; i++) {
+          if (state.hand.length === 0) break;
+          const idx = Math.floor(Math.random() * state.hand.length);
+          removed.push(state.hand.splice(idx, 1)[0]);
+        }
+        if (removed.length > 0) {
+          // 보스 → 손패 방향으로 날아가는 투사체 이펙트
+          if (!boss._cardBreakFx) boss._cardBreakFx = [];
+          const canvasRect = canvas.getBoundingClientRect();
+          const handPanel = document.getElementById('hand-panel');
+          const handRect = handPanel ? handPanel.getBoundingClientRect() : null;
+          // 캔버스 기준 손패 패널 y 위치 계산
+          const targetY = handRect
+            ? (handRect.top - canvasRect.top) * (canvas.height / canvasRect.height)
+            : canvas.height + 40;
+          removed.forEach((card, i) => {
+            const startX = boss.x + (i - (removed.length-1)/2) * 28;
+            const startY = boss.y + boss.r + 10;
+            const targetX = canvas.width * (0.3 + i * 0.2);
+            const totalFrames = 30;
+            boss._cardBreakFx.push({
+              text: card.rank + (card.suit === 'heart' ? '♥' : card.suit === 'diamond' ? '♦' : card.suit === 'club' ? '♣' : '♠'),
+              suit: card.suit,
+              x: startX, y: startY,
+              startX, startY,
+              targetX, targetY,
+              vx: (targetX - startX) / totalFrames,
+              vy: (targetY - startY) / totalFrames,
+              timer: totalFrames,
+              totalFrames,
+              alpha: 1.0,
+              phase: 'fly', // fly → explode
+              explodeTimer: 0,
+            });
+          });
+          const label = removed.map(c => c.rank).join(', ');
+          boss.skillLabel = '\uD83C\uDCCF \uce74\ub4dc \ud30c\uad34!'; boss.skillLabelTimer = 1200;
+          spawnFloat(boss.x, boss.y + 18, '\uD83C\uDCCF ' + label + ' \ud30c\uad34!', '#c084fc');
+          showNotif('\uD83C\uDCCF \uce74\ub4dc ' + removed.length + '\uc7a5 \ud30c\uad34!', '#c084fc');
+          renderHand();
+        }
+      }
+    }
 
     if (boss.skills.includes('combobreak') || boss.chaosActive==='combobreak') {
       if (state.combo > 0) {
@@ -1375,9 +1529,63 @@ function drawBoss() {
   if (boss.teleportWarn) ctx2.globalAlpha=Math.sin(Date.now()/80)>0?0.4:1.0;
 
   if (boss.skills.includes('repulse')||boss.chaosActive==='repulse') {
-    ctx2.beginPath(); ctx2.arc(boss.x,boss.y,boss.r*5,0,Math.PI*2);
-    ctx2.strokeStyle='#fb923c44'; ctx2.lineWidth=1;
-    ctx2.setLineDash([4,4]); ctx2.stroke(); ctx2.setLineDash([]);
+    const rRange = boss.r * 5;
+    const t3 = Date.now() / 600;
+    const b2 = state.ball;
+    const inField = b2 && Math.sqrt((b2.x-boss.x)**2+(b2.y-boss.y)**2) < rRange;
+    const isRepulseActive = b2 && (b2._repulseLock > 0 || b2._counterLock > 0);
+
+    // 기본 필드 범위 원 (회전 점선)
+    ctx2.save();
+    ctx2.translate(boss.x, boss.y);
+    ctx2.rotate(t3);
+    ctx2.beginPath(); ctx2.arc(0, 0, rRange, 0, Math.PI*2);
+    ctx2.strokeStyle = inField ? '#fb923c' : '#fb923c66';
+    ctx2.lineWidth = inField ? 2 : 1;
+    ctx2.setLineDash([6, 6]);
+    ctx2.globalAlpha = 0.5 + Math.sin(t3*3) * 0.2;
+    ctx2.stroke();
+    ctx2.setLineDash([]);
+    ctx2.restore();
+
+    // 공이 필드 안에 있을 때 — 내부 채움 + 방사선
+    if (inField) {
+      // 반투명 채움
+      ctx2.beginPath(); ctx2.arc(boss.x, boss.y, rRange, 0, Math.PI*2);
+      ctx2.fillStyle = 'rgba(251,146,60,0.08)';
+      ctx2.globalAlpha = 1.0;
+      ctx2.fill();
+
+      // 방사선 (보스 → 외곽)
+      const rays = 8;
+      for (let i = 0; i < rays; i++) {
+        const angle = (i / rays) * Math.PI * 2 + t3 * 1.5;
+        ctx2.beginPath();
+        ctx2.moveTo(boss.x + Math.cos(angle) * boss.r * 1.5, boss.y + Math.sin(angle) * boss.r * 1.5);
+        ctx2.lineTo(boss.x + Math.cos(angle) * rRange * 0.9, boss.y + Math.sin(angle) * rRange * 0.9);
+        ctx2.strokeStyle = '#fb923c';
+        ctx2.lineWidth = 1;
+        ctx2.globalAlpha = 0.3 + Math.sin(t3*4 + i) * 0.15;
+        ctx2.stroke();
+      }
+    }
+
+    // 반격 발동 시 — 강한 플래시 이펙트
+    if (isRepulseActive) {
+      const flashAlpha = (b2._counterLock / 18) * 0.4;
+      ctx2.beginPath(); ctx2.arc(boss.x, boss.y, rRange, 0, Math.PI*2);
+      ctx2.fillStyle = 'rgba(251,146,60,' + flashAlpha + ')';
+      ctx2.globalAlpha = 1.0;
+      ctx2.fill();
+      // 강한 테두리
+      ctx2.beginPath(); ctx2.arc(boss.x, boss.y, rRange, 0, Math.PI*2);
+      ctx2.strokeStyle = '#fbbf24';
+      ctx2.lineWidth = 3;
+      ctx2.globalAlpha = flashAlpha * 2;
+      ctx2.stroke();
+    }
+
+    ctx2.globalAlpha = 1.0;
   }
 
   if (boss.shieldActive) {
@@ -1438,6 +1646,136 @@ function drawBoss() {
     ctx2.fillText(boss.skillLabel, boss.x, barY+barH+14);
   }
   ctx2.restore();
+
+  // 카드 파괴 이펙트
+  if (boss._cardBreakFx && boss._cardBreakFx.length > 0) {
+    const ctx4 = canvas.getContext('2d');
+    boss._cardBreakFx.forEach(fx => {
+      ctx4.save();
+      ctx4.globalAlpha = fx.alpha;
+
+      if (fx.phase === 'fly') {
+        // 비행 중: 작은 카드 + 보라색 잔상 트레일
+        const progress = 1 - fx.timer / fx.totalFrames;
+        const scale = 0.6 + progress * 0.4;
+        ctx4.translate(fx.x, fx.y);
+        ctx4.rotate(progress * Math.PI * 2);
+        ctx4.scale(scale, scale);
+        // 카드 배경
+        ctx4.fillStyle = '#1e0a2e';
+        ctx4.strokeStyle = '#c084fc';
+        ctx4.lineWidth = 2;
+        ctx4.beginPath();
+        ctx4.roundRect(-10, -14, 20, 28, 3);
+        ctx4.fill(); ctx4.stroke();
+        // 카드 텍스트
+        ctx4.fillStyle = fx.suit === 'heart' || fx.suit === 'diamond' ? '#f87171' : '#e2e8f0';
+        ctx4.font = 'bold 10px Space Mono, monospace';
+        ctx4.textAlign = 'center';
+        ctx4.textBaseline = 'middle';
+        ctx4.fillText(fx.text, 0, 0);
+        // 글로우
+        ctx4.shadowColor = '#c084fc';
+        ctx4.shadowBlur = 10;
+        ctx4.beginPath();
+        ctx4.roundRect(-10, -14, 20, 28, 3);
+        ctx4.stroke();
+      } else {
+        // 폭발: 카드 + X 표시 + 퍼지는 원
+        const p = 1 - fx.explodeTimer / 25;
+        const radius = 12 + p * 44;
+        // 퍼지는 원 (2겹)
+        ctx4.beginPath();
+        ctx4.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+        ctx4.strokeStyle = `rgba(192,132,252,${fx.alpha})`;
+        ctx4.lineWidth = 3;
+        ctx4.stroke();
+        ctx4.beginPath();
+        ctx4.arc(fx.x, fx.y, radius * 0.6, 0, Math.PI * 2);
+        ctx4.strokeStyle = `rgba(248,113,113,${fx.alpha * 0.7})`;
+        ctx4.lineWidth = 2;
+        ctx4.stroke();
+        // 카드 배경
+        ctx4.fillStyle = '#1e0a2e';
+        ctx4.strokeStyle = '#c084fc';
+        ctx4.lineWidth = 2.5;
+        ctx4.beginPath();
+        ctx4.roundRect(fx.x - 26, fx.y - 36, 52, 68, 6);
+        ctx4.fill(); ctx4.stroke();
+        // 카드 텍스트
+        ctx4.fillStyle = fx.suit === 'heart' || fx.suit === 'diamond' ? '#f87171' : '#e2e8f0';
+        ctx4.font = 'bold 22px Space Mono, monospace';
+        ctx4.textAlign = 'center';
+        ctx4.textBaseline = 'middle';
+        ctx4.fillText(fx.text, fx.x, fx.y);
+        // X 표시
+        ctx4.strokeStyle = '#f87171';
+        ctx4.lineWidth = 4;
+        ctx4.beginPath();
+        ctx4.moveTo(fx.x - 18, fx.y - 28); ctx4.lineTo(fx.x + 18, fx.y + 28);
+        ctx4.moveTo(fx.x + 18, fx.y - 28); ctx4.lineTo(fx.x - 18, fx.y + 28);
+        ctx4.stroke();
+      }
+      ctx4.restore();
+    });
+  }
+
+  // 핀 파괴 이펙트 (보스 ctx와 분리해서 렌더)
+  if (boss._pinBreakFx && boss._pinBreakFx.length > 0) {
+    const ctx3 = canvas.getContext('2d');
+    // 보스 → 핀 방향 빔
+    if (boss._pinBreakBeam && boss._pinBreakBeam.length > 0) {
+      boss._pinBreakBeam.forEach(bm => {
+        const progress = 1 - bm.timer / 20;
+        const alpha = (1 - progress) * 0.9;
+        // 메인 빔
+        ctx3.save();
+        ctx3.beginPath();
+        ctx3.moveTo(boss.x, boss.y);
+        ctx3.lineTo(bm.tx, bm.ty);
+        ctx3.strokeStyle = `rgba(248,113,113,${alpha})`;
+        ctx3.lineWidth = 3 * (1 - progress) + 1;
+        ctx3.shadowColor = '#f87171';
+        ctx3.shadowBlur = 8;
+        ctx3.stroke();
+        // 글로우 빔
+        ctx3.beginPath();
+        ctx3.moveTo(boss.x, boss.y);
+        ctx3.lineTo(bm.tx, bm.ty);
+        ctx3.strokeStyle = `rgba(255,200,200,${alpha * 0.4})`;
+        ctx3.lineWidth = 7 * (1 - progress);
+        ctx3.stroke();
+        ctx3.restore();
+      });
+    }
+    // 핀 위치 폭발 이펙트
+    boss._pinBreakFx.forEach(fx => {
+      const progress = 1 - fx.timer / 40;
+      const alpha = (1 - progress) * 0.9;
+      const radius = 8 + progress * 32;
+      ctx3.beginPath();
+      ctx3.arc(fx.x, fx.y, radius, 0, Math.PI * 2);
+      ctx3.strokeStyle = `rgba(248,113,113,${alpha})`;
+      ctx3.lineWidth = 2.5 * (1 - progress);
+      ctx3.stroke();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + progress * 2;
+        const dist = progress * 28;
+        const px = fx.x + Math.cos(angle) * dist;
+        const py = fx.y + Math.sin(angle) * dist;
+        ctx3.beginPath();
+        ctx3.arc(px, py, 2.5 * (1 - progress), 0, Math.PI * 2);
+        ctx3.fillStyle = `rgba(251,146,60,${alpha})`;
+        ctx3.fill();
+      }
+      if (progress < 0.3) {
+        ctx3.beginPath();
+        ctx3.arc(fx.x, fx.y, 12 * (1 - progress / 0.3), 0, Math.PI * 2);
+        ctx3.fillStyle = `rgba(255,255,255,${alpha * 0.6})`;
+        ctx3.fill();
+      }
+    });
+  }
 }
 
 
@@ -1635,13 +1973,14 @@ function stepPhysics() {
   const dx = b.x - holeX, dy = b.y - holeY;
   const inHole = b.graceFrames <= 0 && Math.sqrt(dx*dx + dy*dy) < holeR;
   if (inHole) {
-    if (state.holeBlocked) {
-      // 피버 홀 차단 — 홀 경계에서 튕겨냄
+    if (state.holeBlocked || _TEST_MODE) {
+      // 피버 홀 차단 또는 테스트 모드 — 최대 파워로 튕겨냄
       b.y = holeEdgeY - b.r - 1;
-      b.vy = -Math.abs(b.vy) * 0.85;
-      b.vx += (b.x < holeX ? -1 : 1) * 0.5; // 좌우 살짝 분산
+      b.vy = -14;
+      b.vx = (b.x < holeX ? -1 : 1) * 2;
       state.slowmo = false;
       state._holeSlowmo = false;
+      if (!state.holeBlocked) spawnFloat(b.x, holeEdgeY - 20, '🧪 TEST', '#34d399');
     } else if (state.insurance) {
       state.insurance = false;
       state.slowmo = false;
@@ -1969,14 +2308,16 @@ function stepPhysics() {
       // bomb: 반사 + 주변 핀 폭발 제거
       if (p.type === 'bomb' && !p.hit) {
         p.hit = true; p.alive = false;
-        // 반사
+        // 반사 — 최대 속도로 강하게 튕김
         const nx2 = dx / dist, ny2 = dy / dist;
         const overlap2 = minDist - dist;
         b.x += nx2 * overlap2 * 0.5;
         b.y += ny2 * overlap2 * 0.5;
-        const dot2 = b.vx * nx2 + b.vy * ny2;
-        b.vx -= 2 * dot2 * nx2;
-        b.vy -= 2 * dot2 * ny2;
+        const maxBombSpeed = 14;
+        b.vx = nx2 * maxBombSpeed;
+        b.vy = ny2 * maxBombSpeed;
+        // 위쪽 성분 보장
+        if (b.vy > -3) b.vy = -Math.abs(b.vy) - 3;
         // 폭발 효과
         const explodeR = p.r * 8;
         let killed = 0;
@@ -1991,6 +2332,9 @@ function stepPhysics() {
         state.chips += chipBonus;
         SFX.bomb();
         spawnFloat(p.x, p.y, '+' + chipBonus + 'C 폭발!', '#f87171');
+        // 폭발 이펙트 저장
+        if (!state._bombFx) state._bombFx = [];
+        state._bombFx.push({ x: p.x, y: p.y, r: explodeR, timer: 40 });
         // 폭발 조커 보유 시 Mult ×2
         if (state.jokers.some(j => j.effect === 'bomb')) {
           state.jokerMult = Math.round(state.jokerMult * 2) + (state.jokerMult === 0 ? 4 : 0);
@@ -2156,8 +2500,15 @@ function onCardHit(p) {
   const enhChance = baseEnhChance + enhBonus;
 
   if (p.type === 'mystery') {
-    card = drawFromDeck();
-    card.enhance = Math.random() < enhChance ? (['bonus','mult','glass'][Math.floor(Math.random()*3)]) : null;
+    // 덱에서 미사용 카드 중 랜덤 습득
+    const available = state.deck.filter(cd => !cd.used);
+    if (available.length) {
+      const picked = available[Math.floor(Math.random() * available.length)];
+      picked.used = true;
+      card = { rank: picked.rank, suit: picked.suit, enhance: Math.random() < enhChance ? (['bonus','mult','glass'][Math.floor(Math.random()*3)]) : null };
+    } else {
+      card = makeRandCard();
+    }
     spawnFloat(p.x, p.y - 20, '? → ' + card.rank + SUIT_SYM[card.suit], '#fbbf24');
   } else {
     const suitCards = state.deck.filter(c => c.suit === p.suit && !c.used);
@@ -2728,7 +3079,7 @@ function triggerResult() {
   const roundMult2 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
   const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult2);
 
-  const TEST_MODE = false;
+  const TEST_MODE = _TEST_MODE;
   const isBossRound = state.roundIdx === 2 && state.boss;
 
   // 테스트 모드: 점수/보스 무관하게 목표 점수 달성 또는 3턴 소진 시 클리어
@@ -3269,45 +3620,48 @@ function draw() {
     } else if (p.type === 'card') {
       const col = {heart:'#f87171',diamond:'#60a5fa',club:'#34d399',spade:'#c084fc'}[p.suit];
       const bg  = {heart:'#7f1d1d',diamond:'#1e3a5f',club:'#064e3b',spade:'#3b1f6e'}[p.suit];
-      // 마름모
+      // 박스 + 약 25도 흔들림
+      const tc = (Date.now() / 800) + (p.x * 0.05); // 핀마다 위상 다르게
+      const angle = Math.sin(tc) * (25 * Math.PI / 180);
+      const hw = p.r * 1.1, hh = p.r * 1.3;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
       ctx.beginPath();
-      ctx.moveTo(p.x,         p.y - p.r * 1.3);
-      ctx.lineTo(p.x + p.r,   p.y);
-      ctx.lineTo(p.x,         p.y + p.r * 1.3);
-      ctx.lineTo(p.x - p.r,   p.y);
-      ctx.closePath();
+      ctx.roundRect(-hw, -hh, hw * 2, hh * 2, 3);
       ctx.fillStyle = bg;
       ctx.strokeStyle = col;
       ctx.lineWidth = 1.5;
       ctx.fill(); ctx.stroke();
       ctx.fillStyle = col;
-      ctx.font = 'bold 8px sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(SUIT_SYM[p.suit], p.x, p.y + 3);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(SUIT_SYM[p.suit], 0, 0);
+      ctx.restore();
+      ctx.textBaseline = 'alphabetic';
 
     } else if (p.type === 'mystery') {
-      // 반짝이는 별 형태
+      // 박스 형태 + ? 가운데 + 흔들림
+      const tm = (Date.now() / 800) + (p.x * 0.05);
+      const angM = Math.sin(tm) * (25 * Math.PI / 180);
+      const hw = p.r * 1.1, hh = p.r * 1.3;
       ctx.save();
       ctx.translate(p.x, p.y);
-      const t = Date.now() / 400;
-      ctx.rotate(Math.sin(t) * 0.3);
+      ctx.rotate(angM);
       ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
-        const ai = a + Math.PI / 5;
-        ctx.lineTo(Math.cos(a) * p.r * 1.2, Math.sin(a) * p.r * 1.2);
-        ctx.lineTo(Math.cos(ai) * p.r * 0.5, Math.sin(ai) * p.r * 0.5);
-      }
-      ctx.closePath();
+      ctx.roundRect(-hw, -hh, hw * 2, hh * 2, 3);
       ctx.fillStyle = '#422006';
       ctx.strokeStyle = '#fbbf24';
       ctx.lineWidth = 1.5;
       ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#fbbf24';
-      ctx.font = 'bold 8px Space Mono,monospace';
+      ctx.font = 'bold 10px Space Mono,monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('?', 0, 3);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', 0, 0);
       ctx.restore();
+      ctx.textBaseline = 'alphabetic';
 
     } else {
       // normal / spring — 기존 원형 핀
@@ -3335,23 +3689,71 @@ function draw() {
   // boss (핀보다 위 레이어)
   drawBoss();
 
+  // 폭발 이펙트
+  if (state._bombFx && state._bombFx.length > 0) {
+    state._bombFx = state._bombFx.filter(fx => {
+      fx.timer--;
+      const p = 1 - fx.timer / 40;
+      const alpha = (1 - p) * 0.9;
+      // 외곽 충격파 원
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.r * p, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(251,146,60,${alpha})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // 중간 원
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.r * p * 0.6, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(248,113,113,${alpha * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // 내부 채움 (초반)
+      if (p < 0.4) {
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.r * p * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,200,${alpha})`;
+        ctx.fill();
+      }
+      // 8방향 파편
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const dist = fx.r * p * 0.85;
+        const px = fx.x + Math.cos(angle) * dist;
+        const py = fx.y + Math.sin(angle) * dist;
+        ctx.beginPath();
+        ctx.arc(px, py, 3 * (1 - p), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(251,146,60,${alpha})`;
+        ctx.fill();
+      }
+      return fx.timer > 0;
+    });
+  }
+
   // ball trail
   const b = state.ball;
   if (b) {
+    const isCounter = b._counterLock > 0;
+    const isRepulse = b._repulseLock > 0;
+    const ballColor  = isCounter ? '#f87171' : isRepulse ? '#fb923c' : '#e2e8f0';
+    const trailColor = isCounter ? '248,113,113' : isRepulse ? '251,146,60' : '226,232,240';
+    const strokeColor = isCounter ? '#fbbf24' : isRepulse ? '#fbbf24' : '#94a3b8';
+
     b.trail.forEach((t, i) => {
       const alpha = (i / b.trail.length) * 0.35;
       const r2 = b.r * (i / b.trail.length) * 0.8;
       ctx.beginPath();
       ctx.arc(t.x, t.y, r2, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(226,232,240,${alpha})`;
+      ctx.fillStyle = `rgba(${trailColor},${alpha})`;
       ctx.fill();
     });
 
+    // 반격 중 맥박 효과
+    const pulse = (isCounter || isRepulse) ? 1 + Math.sin(Date.now() / 60) * 0.15 : 1;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-    ctx.fillStyle = '#e2e8f0';
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1.5;
+    ctx.arc(b.x, b.y, b.r * pulse, 0, Math.PI*2);
+    ctx.fillStyle = ballColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isCounter ? 2.5 : 1.5;
     ctx.fill();
     ctx.stroke();
   }
@@ -3930,18 +4332,25 @@ const JOKER_POOL = [
   { name:'스트레이트 드라이브', desc:'연속 숫자 4장+ 보유 시 ×3 Mult',price:9,  effect:'straight' },
   { name:'올인 조커',    desc:'첫 MAX POWER 시 Mult ×5',              price:10, effect:'allin'    },
   { name:'자력 조커 🧲', desc:'모든 핀이 약한 인력 — 공이 핀 주변을 흐름', price:7, effect:'magnet_joker' },
+  { name:'수집가 조커',  desc:'라운드 클리어 시 보유 조커 수 × $2 추가 지급',          price:8, effect:'collector'    },
+  { name:'상인 조커',    desc:'상점 아이템 구매마다 $1 캐시백',                        price:6, effect:'merchant'     },
 ];
 const PACK_POOL = [
-  { name:'아르카나 팩',  desc:'덱에서 카드 2장 즉시 획득',      price:4, type:'pack' },
-  { name:'스펙트럴 팩',  desc:'인핸스먼트 카드 1장 즉시 획득',  price:5, type:'pack' },
+  { name:'아르카나 팩',  desc:'일반 카드 2장을 덱에 추가',                    price:4, type:'pack' },
+  { name:'스펙트럴 팩',  desc:'강화 카드 1장을 덱에 추가 (+Chips/+Mult/×Mult)', price:5, type:'pack' },
+  { name:'골드 팩',      desc:'골드 카드 1장을 덱에 추가 (클리어 시 +$3)',     price:6, type:'pack' },
+  { name:'제거 팩',      desc:'보유 카드 중 1장 선택 삭제 (+$1 환급)',          price:2, type:'pack' },
 ];
 const PLANET_POOL = [
   { name:'갤럭시 카드', desc:'모든 족보 레벨 +1 (전 족보 Chips·Mult 상승)', price:6, hand:'all' },
+  { name:'점성술 팩',   desc:'랜덤 족보 1개 레벨 +1',                        price:5, hand:'random' },
 ];
 const CONSUMABLE_POOL = [
   { name:'와일드카드 주문서', desc:'손패 마지막 카드를 와일드로 변환', price:5, type:'consumable' },
   { name:'자력장',            desc:'구멍 근처 자동 방향 보정 1회',     price:4, type:'consumable' },
   { name:'보험',              desc:'구멍 낙하 시 1회 자동 구출',       price:6, type:'consumable' },
+  { name:'코인 부적',         desc:'즉시 +$5 획득',                    price:3, type:'consumable' },
+  { name:'복권',              desc:'즉시 $1~$8 랜덤 획득',             price:2, type:'consumable' },
 ];
 
 let shopState = { coins: 4, rerollCost: 5, items: [], purchased: new Set() };
@@ -3953,13 +4362,82 @@ function randFrom(arr, n) {
   return shuffled.slice(0, n);
 }
 
-function generateShopItems() {
+function makeRandCard() {
+  const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+  const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
+  return { rank, suit, enhance: null, used: false };
+}
+
+function showRemoveCardUI() {
+  // 보유 카드 선택 삭제 UI — 팝업 오버레이
+  let overlay = document.getElementById('remove-card-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'remove-card-overlay';
+    overlay.style.cssText = 'position:absolute;inset:0;background:#0d1117ee;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+    document.getElementById('shop-screen').appendChild(overlay);
+  }
+  overlay.innerHTML = '';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:Space Mono,monospace;font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:12px;text-align:center';
+  title.textContent = '🗑 삭제할 카드 선택 (+$1 환급)';
+  overlay.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:320px;margin-bottom:14px';
+
+  // 덱 카드 목록
+  const seen = new Set();
+  state.deck.forEach((card, idx) => {
+    const key = card.rank + card.suit + (card.enhance||'');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const btn = document.createElement('button');
+    const suitCol = {heart:'#f87171',diamond:'#60a5fa',club:'#34d399',spade:'#c084fc'}[card.suit];
+    const enhLabel = card.enhance ? '['+card.enhance+']' : '';
+    btn.style.cssText = `padding:5px 8px;border-radius:4px;border:1px solid ${suitCol};background:var(--bg3);
+      color:${suitCol};font-family:Space Mono,monospace;font-size:10px;font-weight:700;cursor:pointer`;
+    btn.textContent = card.rank + SUIT_SYM[card.suit] + enhLabel;
+    btn.addEventListener('click', () => {
+      if (state.deck.length <= 10) {
+        title.textContent = '⚠ 최소 10장!'; return;
+      }
+      const i = state.deck.indexOf(card);
+      if (i >= 0) state.deck.splice(i, 1);
+      shopState.coins += 1;
+      document.getElementById('shop-coins').textContent = shopState.coins;
+      showPackResult('제거 팩', card.rank + SUIT_SYM[card.suit] + ' 삭제 +$1');
+      overlay.remove();
+    });
+    grid.appendChild(btn);
+  });
+  overlay.appendChild(grid);
+
+  const cancel = document.createElement('button');
+  cancel.style.cssText = 'padding:7px 20px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-family:Space Mono,monospace;font-size:10px;cursor:pointer';
+  cancel.textContent = '취소';
+  cancel.addEventListener('click', () => overlay.remove());
+  overlay.appendChild(cancel);
+  overlay.style.display = 'flex';
+}
+
+function generateShopItems(reroll=false) {
   shopState.purchased = new Set();
-  shopState.items = {
-    jokers:  randFrom(JOKER_POOL, 2),
-    packs:   randFrom(PACK_POOL, 2),
-    misc:    [...randFrom(PLANET_POOL, 1), ...randFrom(CONSUMABLE_POOL, 1)],
-  };
+  if (!reroll) {
+    // 새 라운드: 전체 재생성
+    shopState.items = {
+      jokers:  randFrom(JOKER_POOL, 2),
+      packs:   randFrom(PACK_POOL, 2),
+      misc:    [...randFrom(PLANET_POOL, 1), ...randFrom(CONSUMABLE_POOL, 1)],
+    };
+  } else {
+    // 리롤: 조커 + 플래닛&소모품만 변경, 카드팩은 유지
+    shopState.items = {
+      jokers:  randFrom(JOKER_POOL, 2),
+      packs:   shopState.items.packs, // 카드팩 유지
+      misc:    [...randFrom(PLANET_POOL, 1), ...randFrom(CONSUMABLE_POOL, 1)],
+    };
+  }
 }
 
 function calcCoinReward(finalScore, target, isBoss) {
@@ -3987,7 +4465,13 @@ function calcCoinReward(finalScore, target, isBoss) {
   const hasGold = state.hand.some(c => c.enhance === 'gold');
   if (hasGold) earned += 3;
 
-  return { earned, interest, isBoss, baseReward, excessBonus, goldBonus: hasGold ? 3 : 0 };
+  // 5. 수집가 조커: 보유 조커 수 × $2
+  const collectorBonus = state.jokers.some(j => j.effect === 'collector')
+    ? state.jokers.length * 2 : 0;
+  earned += collectorBonus;
+
+  const roundNames2 = ['1라운드', '2라운드', '보스라운드'];
+  return { earned, interest, isBoss, baseReward, excessBonus, goldBonus: hasGold ? 3 : 0, collectorBonus, clearedRound: roundNames2[state.roundIdx] || '1라운드' };
 }
 
 function openShop(coinInfo) {
@@ -3995,22 +4479,28 @@ function openShop(coinInfo) {
   const prev = shopState.coins;
   shopState.coins += coinInfo.earned;
   generateShopItems();
-  renderShop();
+  renderShop(coinInfo.clearedRound);
 
   // 코인 획득 내역 표시 (버튼 아래 고정 영역)
   const summary = document.getElementById('coin-summary');
   if (summary) {
-    const roundNames = ['1라운드', '2라운드', '보스라운드'];
-    const lines = ['💰 코인 정산', '─────────────',
-      roundNames[state.roundIdx] + ' 클리어  +$' + coinInfo.baseReward];
-    if (coinInfo.excessBonus > 0) lines.push('초과 달성      +$' + coinInfo.excessBonus);
-    if (coinInfo.isBoss)          lines.push('보스 클리어    +$8');
-    if (coinInfo.interest > 0)    lines.push('이자           +$' + coinInfo.interest);
-    if (coinInfo.goldBonus > 0)   lines.push('골드 카드      +$3');
+    const lines = [
+      '💰 코인 정산',
+      '─────────────',
+      coinInfo.clearedRound + ' 클리어  +$' + coinInfo.baseReward,
+    ];
+    if (coinInfo.excessBonus > 0)    lines.push('초과 달성      +$' + coinInfo.excessBonus);
+    if (coinInfo.isBoss)             lines.push('보스 클리어    +$8');
+    if (coinInfo.interest > 0)       lines.push('이자           +$' + coinInfo.interest);
+    if (coinInfo.goldBonus > 0)      lines.push('골드 카드      +$' + coinInfo.goldBonus);
+    if (coinInfo.collectorBonus > 0) lines.push('수집가 조커    +$' + coinInfo.collectorBonus);
     lines.push('─────────────');
     lines.push('합계  $' + prev + ' → $' + shopState.coins);
     summary.textContent = lines.join('\n');
     summary.style.display = 'block';
+    // 리롤 버튼도 같이 표시
+    const rerollBtn = document.getElementById('shop-reroll');
+    if (rerollBtn) rerollBtn.style.display = 'flex';
   }
 
   document.getElementById('shop-screen').classList.add('show');
@@ -4031,23 +4521,89 @@ function showPackResult(packName, msg) {
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 }
 
-function renderShop() {
+function renderShop(clearedRound) {
   const roundNames = ['1라운드','2라운드','보스라운드'];
-  const nextRound = roundNames[state.roundIdx] || 'BLIND';
-  const target = STAGE_TARGETS[state.stage] || 999999;
-  document.getElementById('shop-title').textContent = '상점 — 스테이지 ' + (state.stage + 1) + ' / ' + roundNames[state.roundIdx];
+  const nextRoundIdx = state.roundIdx;
+  const nextRound = roundNames[nextRoundIdx] || '1라운드';
+  const cleared = clearedRound || roundNames[nextRoundIdx] || '1라운드';
+  document.getElementById('shop-title').textContent = '상점 — 스테이지 ' + (state.stage + 1) + ' / ' + cleared + ' 클리어';
   document.getElementById('shop-coins').textContent = shopState.coins;
   document.getElementById('reroll-cost').textContent = shopState.rerollCost;
-  const shopRoundMult = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+  const shopRoundMult = [1.0, 1.5, 2.5][nextRoundIdx] || 1.0;
   const shopTarget = Math.round((STAGE_TARGETS[state.stage] || 999999) * shopRoundMult);
   document.getElementById('shop-stage-info').innerHTML =
-    '다음: <strong>' + nextRound + '</strong> &nbsp;|&nbsp; 목표: <strong>' + shopTarget.toLocaleString() + '점</strong>' +
-    ' &nbsp;|&nbsp; 보유 코인: <strong style="color:var(--gold)">$' + shopState.coins + '</strong>';
+    '<div style="text-align:center">다음: <strong>' + nextRound + '</strong> &nbsp;|&nbsp; 목표: <strong>' + shopTarget.toLocaleString() + '점</strong></div>';
 
   renderShopGrid('shop-jokers',  shopState.items.jokers,  'joker');
   renderShopGrid('shop-packs',   shopState.items.packs,   'pack');
   renderShopGrid('shop-misc',    shopState.items.misc,    null);
   renderPinUpgradeGrid();
+}
+
+function renderDeckCustom() {
+  const addGrid = document.getElementById('deck-add-grid');
+  const removeGrid = document.getElementById('deck-remove-grid');
+  const countEl = document.getElementById('deck-count');
+  if (!addGrid || !removeGrid) return;
+
+  if (countEl) countEl.textContent = state.deck.length;
+
+  // 랭크별 추가 버튼
+  addGrid.innerHTML = '';
+  RANKS.forEach(rank => {
+    const btn = document.createElement('button');
+    const canAfford = shopState.coins >= 3;
+    btn.style.cssText = `padding:5px 2px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);
+      color:${canAfford ? 'var(--text)' : 'var(--red)'};font-family:Space Mono,monospace;font-size:10px;
+      font-weight:700;cursor:${canAfford ? 'pointer' : 'not-allowed'};text-align:center`;
+    btn.innerHTML = `<div>${rank}</div><div style="font-size:8px;color:var(--gold)">+$3</div>`;
+    if (canAfford) {
+      btn.addEventListener('click', () => {
+        if (shopState.coins < 3) return;
+        shopState.coins -= 3;
+        // 4가지 무늬 중 랜덤으로 1장 추가
+        const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
+        state.deck.push({ rank, suit, enhance: null, used: false });
+        spawnFloat(canvas.width/2, canvas.height*0.5, '+' + rank + SUIT_SYM[suit] + ' 추가!', '#34d399');
+        renderShop(null);
+        renderDeckCustom();
+        document.getElementById('shop-coins').textContent = shopState.coins;
+      });
+    }
+    addGrid.appendChild(btn);
+  });
+
+  // 덱 카드 목록 (삭제용)
+  removeGrid.innerHTML = '';
+  // 랭크+무늬별 카운트
+  const cardMap = {};
+  state.deck.forEach(card => {
+    const key = card.rank + card.suit;
+    if (!cardMap[key]) cardMap[key] = { rank: card.rank, suit: card.suit, count: 0 };
+    cardMap[key].count++;
+  });
+  Object.values(cardMap).sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]).forEach(entry => {
+    const btn = document.createElement('button');
+    const suitCol = {heart:'#f87171',diamond:'#60a5fa',club:'#34d399',spade:'#c084fc'}[entry.suit];
+    btn.style.cssText = `padding:3px 5px;border-radius:3px;border:1px solid var(--border);background:var(--bg3);
+      color:${suitCol};font-family:Space Mono,monospace;font-size:9px;font-weight:700;cursor:pointer`;
+    btn.textContent = entry.rank + SUIT_SYM[entry.suit] + (entry.count > 1 ? '×'+entry.count : '');
+    btn.title = '삭제 +$1';
+    btn.addEventListener('click', () => {
+      // 해당 카드 1장 제거
+      const idx = state.deck.findIndex(c => c.rank === entry.rank && c.suit === entry.suit);
+      if (idx < 0 || state.deck.length <= 10) {
+        spawnFloat(canvas.width/2, canvas.height*0.5, '최소 10장!', '#f87171');
+        return;
+      }
+      state.deck.splice(idx, 1);
+      shopState.coins += 1;
+      spawnFloat(canvas.width/2, canvas.height*0.5, entry.rank + SUIT_SYM[entry.suit] + ' 삭제 +$1', '#fbbf24');
+      renderDeckCustom();
+      document.getElementById('shop-coins').textContent = shopState.coins;
+    });
+    removeGrid.appendChild(btn);
+  });
 }
 
 function renderPinUpgradeGrid() {
@@ -4118,9 +4674,11 @@ function renderShopGrid(elId, items, defaultTag) {
     div.className = 'shop-item' + (sold ? ' sold' : '');
     div.innerHTML = `
       <div class="si-tag ${tag}">${tag === 'joker' ? '조커' : tag === 'pack' ? '카드 팩' : tag === 'planet' ? '플래닛' : '소모품'}</div>
-      <div class="si-name">${item.name}</div>
-      <div class="si-desc">${item.desc}</div>
-      <div class="si-price ${!canAfford && !sold ? 'cant-afford' : ''}">$${item.price}</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px">
+        <div class="si-name" style="margin-bottom:2px">${item.name}</div>
+        <div class="si-price ${!canAfford && !sold ? 'cant-afford' : ''}" style="white-space:nowrap">$${item.price}</div>
+      </div>
+      <div class="si-desc" style="margin-bottom:2px">${item.desc}</div>
     `;
     if (!sold) {
       div.addEventListener('click', () => buyItem(key, item, elId, i));
@@ -4140,6 +4698,11 @@ function buyItem(key, item, elId, i) {
   }
   shopState.coins -= item.price;
   shopState.purchased.add(key);
+  // 상인 조커 캐시백 (자기 자신 구매 제외)
+  if (item.effect !== 'merchant' && state.jokers.some(j => j.effect === 'merchant')) {
+    shopState.coins += 1;
+    spawnFloat(canvas.width/2, canvas.height*0.5, '상인 조커 +$1', '#fbbf24');
+  }
 
   // ── JOKER ──────────────────────────────────────────────
   if (item.effect) {
@@ -4165,7 +4728,8 @@ function buyItem(key, item, elId, i) {
       '트리플':{chips:20,mult:2},'스트레이트':{chips:30,mult:3},'플러시':{chips:15,mult:2},
       '풀하우스':{chips:25,mult:2},'포카드':{chips:30,mult:3},
     };
-    const hands = item.hand === 'all' ? Object.keys(bonusMap) : [item.hand];
+    const allHands = Object.keys(bonusMap);
+    const hands = item.hand === 'all' ? allHands : item.hand === 'random' ? [allHands[Math.floor(Math.random()*allHands.length)]] : [item.hand];
     hands.forEach(h => {
       if (!planetBonus[h]) planetBonus[h] = {chips:0, mult:0};
       const b = bonusMap[h] || {chips:10,mult:1};
@@ -4177,22 +4741,29 @@ function buyItem(key, item, elId, i) {
   // ── CARD PACK ──────────────────────────────────────────
   if (item.type === 'pack') {
     if (item.name === '아르카나 팩') {
-      const drawn = [drawFromDeck(), drawFromDeck()];
-      drawn.forEach(card => {
-        if (state.hand.length < 5) state.hand.push(card);
-        else state.hand = trimTobestHand(card);
-      });
+      // 일반 카드 2장 덱에 추가
+      const cards = [makeRandCard(), makeRandCard()];
+      cards.forEach(card => state.deck.push(card));
       renderHand(); updateHUD();
-      showPackResult('아르카나 팩', drawn.map(c => c.rank + SUIT_SYM[c.suit]).join(', ') + ' 획득!');
+      showPackResult('아르카나 팩', cards.map(c => c.rank + SUIT_SYM[c.suit]).join(', ') + ' 덱 추가!');
     }
     if (item.name === '스펙트럴 팩') {
-      const card = drawFromDeck();
+      const card = makeRandCard();
       card.enhance = ['bonus','mult','glass'][Math.floor(Math.random() * 3)];
-      if (state.hand.length < 5) state.hand.push(card);
-      else state.hand = trimTobestHand(card);
+      state.deck.push(card);
       renderHand(); updateHUD();
       const enhName = card.enhance === 'bonus' ? '+Chips' : card.enhance === 'mult' ? '+Mult' : '×Mult(글래스)';
-      showPackResult('스펙트럴 팩', card.rank + SUIT_SYM[card.suit] + ' [' + enhName + '] 획득!');
+      showPackResult('스펙트럴 팩', card.rank + SUIT_SYM[card.suit] + ' [' + enhName + '] 덱 추가!');
+    }
+    if (item.name === '골드 팩') {
+      const card = makeRandCard();
+      card.enhance = 'gold';
+      state.deck.push(card);
+      renderHand(); updateHUD();
+      showPackResult('골드 팩', card.rank + SUIT_SYM[card.suit] + ' [골드] 덱 추가! 클리어 시 +$3');
+    }
+    if (item.name === '제거 팩') {
+      showRemoveCardUI();
     }
   }
 
@@ -4209,6 +4780,17 @@ function buyItem(key, item, elId, i) {
     if (item.name === '보험') {
       state.insurance = true;
       renderConsumablePanel();
+    }
+    if (item.name === '코인 부적') {
+      shopState.coins += 5;
+      spawnFloat(canvas.width/2, canvas.height*0.5, '코인 부적 +$5', '#fbbf24');
+      document.getElementById('shop-coins').textContent = shopState.coins;
+    }
+    if (item.name === '복권') {
+      const prize = Math.floor(Math.random() * 8) + 1;
+      shopState.coins += prize;
+      spawnFloat(canvas.width/2, canvas.height*0.5, '복권 +$' + prize + '!', prize >= 6 ? '#34d399' : '#fbbf24');
+      document.getElementById('shop-coins').textContent = shopState.coins;
     }
   }
 
@@ -4232,7 +4814,7 @@ document.getElementById('shop-reroll').addEventListener('click', () => {
   }
   shopState.coins -= shopState.rerollCost;
   shopState.rerollCost++;
-  generateShopItems();
+  generateShopItems(true);
   renderShop();
 });
 
@@ -4246,6 +4828,7 @@ function closeShopAndPlay() {
 // ── INIT ──────────────────────────────────────────────────
 window.addEventListener('resize', resize);
 resize();
+initBoss(); // 초기 스테이지 보스 초기화
 renderHand();
 updateHUD();
 lastTime = performance.now();
