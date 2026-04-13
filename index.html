@@ -512,7 +512,7 @@
       <div class="hud-label">턴</div>
       <div class="hud-val" id="hturn" style="color:var(--text)">1 / 3</div>
     </div>
-    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v11</div>
+    <div style="position:absolute;bottom:4px;right:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);opacity:0.6">v12</div>
   </div>
 
   <!-- BLIND PROGRESS -->
@@ -829,8 +829,16 @@ function resize() {
   canvas.style.height = canvas.height + 'px';
   initPins();
   // 스테이지2부터 핀 추가: 스테이지N = +(N-1)개 (최대 7개)
-  const extraPins = Math.min(state.stage, 7); // stage 0-based → stage1=0개, stage2=1개...
+  const extraPins = Math.min(state.stage, 7);
   for (let i = 0; i < extraPins; i++) addRandomPin();
+}
+
+function resizeOnly() {
+  // 핀 재배치 없이 캔버스 크기만 조정
+  const w = wrap.clientWidth;
+  canvas.width = w;
+  canvas.height = Math.floor(w * 1.15);
+  canvas.style.height = canvas.height + 'px';
 }
 
 // --- STATE ---
@@ -879,6 +887,22 @@ const HAND_DATA = {
   '트리플 트리플': {chips:100,mult:6,xmult:3.5},   // 3장+3장
   '더블 풀하우스': {chips:90, mult:5,xmult:3.0},   // 트리플+페어+페어
 };
+const HAND_BALL_COUNT = {
+  '하이카드': 1,
+  '원페어': 1,
+  '투페어': 2,
+  '트리플': 3,
+  '스트레이트': 4,
+  '풀하우스': 5,
+  '포카드': 6,
+  '스트레이트 플러시': 7,
+  '로얄 플러시': 7,
+  '더블 풀하우스': 7,
+  '트리플 트리플': 7,
+  '더블 스트레이트': 7,
+  '풀 플러시': 7,
+};
+
 const STAGE_TARGETS = [4000, 12000, 40000, 120000, 320000, 720000, 1600000, 4000000];
 const _TEST_MODE = false;
 
@@ -951,7 +975,11 @@ let state = {
   insurance: false,
   magnet: false,
   _maxBoxTimer: 0,   // 맥스박스 방향 타이머 (ms)
-  _maxBoxDir: 1,     // 왼쪽 슬라이드 방향 (1=파랑, -1=빨강)
+  _maxBoxDir: 1,
+  _handFeverEndTime: 0,
+  _feverTriggered: false,
+  _handFeverHandName: '',
+  extraBalls: [],  // 족보 피버 분열 공
   _maxBoxDir2: -1,    // 오른쪽 슬라이드 방향 (독립)
   _maxBoxTimer2: 1000, // 오른쪽 타이머
   turn: 1,
@@ -991,6 +1019,7 @@ function mkMovingPin(x,y,baseX,moveRange){
 }
 
 function initPins() {
+  console.log('[initPins 호출]', new Error().stack.split('\n')[2]);
   const W = canvas.width, H = canvas.height;
   state.pins = [];
   const rows = 9, cols = 7;
@@ -1518,6 +1547,7 @@ function stepBoss() {
       if (state.combo > 0) {
         const old=state.combo;
         if (boss.hp <= Math.floor(boss.maxHp*0.4)) {
+          console.log('[보스콤보브레이크] holeBlocked=false');
           state.combo=0; state.fever=false; state.holeBlocked=false;
           boss.skillLabel='\u26a1 \ucf54\uc0a4 \ucd08\uae30\ud654!'; boss.skillLabelTimer=1200;
           spawnFloat(boss.x,boss.y+18,'\u26a1 \ucf54\uc0a4 \ucd08\uae30\ud654!','#fbbf24');
@@ -2040,16 +2070,30 @@ function stepPhysics() {
 
   // hole at bottom center — 홀 안에 들어오면 중력으로 자연스럽게 빠짐
   const dx = b.x - holeX, dy = b.y - holeY;
-  const inHole = b.graceFrames <= 0 && Math.sqrt(dx*dx + dy*dy) < holeR;
+  const distToHole = Math.sqrt(dx*dx + dy*dy);
+
+  // 홀 차단 중: graceFrames 무관하게 홀 근처면 항상 튕겨냄
+  if (state.holeBlocked && distToHole < holeR * 1.6 && b.y > holeEdgeY - b.r * 3) {
+    console.log('[홀차단바운스] distToHole=', Math.round(distToHole), 'holeR=', Math.round(holeR), 'graceFrames=', b.graceFrames);
+    b.y = Math.min(b.y, holeEdgeY - b.r - 1);
+    b.vy = -Math.max(Math.abs(b.vy), 10);
+    b.vx = (b.x < holeX ? -1 : 1) * Math.max(Math.abs(b.vx), 4);
+    state.slowmo = false;
+    state._holeSlowmo = false;
+    b.graceFrames = 15;
+    return; // 이번 프레임 홀 관련 처리 종료
+  }
+
+  const inHole = b.graceFrames <= 0 && distToHole < holeR;
   if (inHole) {
-    if (state.holeBlocked || _TEST_MODE) {
-      // 피버 홀 차단 또는 테스트 모드 — 최대 파워로 튕겨냄
+    if (_TEST_MODE) {
       b.y = holeEdgeY - b.r - 1;
       b.vy = -14;
       b.vx = (b.x < holeX ? -1 : 1) * 2;
       state.slowmo = false;
       state._holeSlowmo = false;
-      if (!state.holeBlocked) spawnFloat(b.x, holeEdgeY - 20, '🧪 TEST', '#34d399');
+      b.graceFrames = 10;
+      spawnFloat(b.x, holeEdgeY - 20, '🧪 TEST', '#34d399');
     } else if (state.insurance) {
       state.insurance = false;
       state.slowmo = false;
@@ -2534,6 +2578,10 @@ function onNormalHit(p) {
   // 피버 모드 진입/유지
   const wasFever = state.fever;
   state.fever = state.combo >= 20;
+  // 콤보 피버가 끊겼을 때 holeBlocked 해제 (족보 피버 타이머 없을 때만)
+  if (wasFever && !state.fever && state._handFeverEndTime === 0) {
+    state.holeBlocked = false;
+  }
   if (state.combo >= 20 && !wasFever) {
     // 보스 라운드에서 보스가 살아있으면 콤보 피버 진입 차단
     const bossAlive = state.roundIdx === 2 && state.boss && !state.boss.defeated;
@@ -2621,18 +2669,14 @@ function onCardHit(p) {
     spawnFloat(p.x, p.y - 20, '+20C 카드업!', '#c084fc');
   }
 
-  // 피버(목표 초과) 중엔 7장까지 허용, 아니면 5장 초과 시 자동 정리
-  const maxHand = state.fever ? 7 : 5;
-  if (state.hand.length >= maxHand) {
-    // 이미 maxHand 이상 → trim
-    const trimmed = trimTobestHand(card);
-    const discarded = state.hand.length + 1 - trimmed.length;
-    state.hand = trimmed;
-    if (discarded > 0) {
-      spawnFloat(p.x, p.y - 36, '최적 패 정리! -' + discarded + '장', '#c084fc');
-    }
-  } else {
-    state.hand.push(card);
+  // 손패에 카드 추가
+  state.hand.push(card);
+
+  // 7장이 되면 족보 판별 → 소모 → 잔류 → 홀 차단
+  console.log('[onCardHit] 손패:', state.hand.length, '장');
+  if (state.hand.length >= 7) {
+    console.log('[triggerHandScore 호출] 손패 7장 달성');
+    triggerHandScore(p);
   }
 
   showCardNotif(card.rank + SUIT_SYM[card.suit]);
@@ -2642,7 +2686,7 @@ function onCardHit(p) {
 }
 
 // --- STAGE RECORDS ---
-const RECORD_KEY = 'pinfall_stage_records';
+const RECORD_KEY = 'pinfall_stage_records_v12';
 // 저장된 기록 초기화
 // try { localStorage.removeItem(RECORD_KEY); } catch {} // 랭킹 리셋 비활성화
 
@@ -2710,7 +2754,9 @@ function renderRecordsPanel(newBests) {
 
 // --- FEVER INTRO ---
 function enterFeverMode(label) {
-  if (state.fever) return; // 이미 피버면 스킵
+  if (state.fever) return;
+  // 족보 피버 진행 중이면 스킵 (오버레이 중 또는 홀 차단 타이머 활성)
+  if ((state._feverIntro && state._feverIntro.isHand) || state._handFeverEndTime > 0) return;
   state.fever = true;
   state.combo = Math.max(state.combo, 20);
   state.comboTimer = Date.now();
@@ -2720,8 +2766,7 @@ function enterFeverMode(label) {
   const isBossFever   = label && label.includes('보스');
   const isComboFever  = !isTargetFever && !isBossFever;
   if (isComboFever) {
-    state.holeBlocked = true;
-    spawnFloat(canvas.width/2, canvas.height * 0.75, '🚫 홀 차단!', '#f87171');
+    // 콤보 피버: 홀 차단 없음
   }
 
   // 게임 일시 정지
@@ -2798,7 +2843,10 @@ function enterFeverMode(label) {
     showNotif('🔥 FEVER MODE!', '#f87171');
     if (clearStage) clearStage.style.display = 'none';
     if (feverStage) feverStage.style.display = 'none';
-    state._feverIntro = { timer: 80, label: label || 'Chips × 1.5  |  홀 차단' };
+    // 족보 피버 오버레이 진행 중이면 덮어쓰지 않음
+    if (!state._feverIntro || !state._feverIntro.isHand) {
+      state._feverIntro = { timer: 80, label: label || 'Chips × 1.5  |  홀 차단' };
+    }
     setTimeout(() => {
       intro.style.display = 'none';
       state.phase = 'fly';
@@ -2920,6 +2968,24 @@ function renderHand() {
 }
 
 // --- POKER HAND EVAL ---
+// 족보별 홀 차단 시간 (ms)
+const HAND_FEVER_TIME = {
+  '하이카드': 0,
+  '원페어': 20000,
+  '투페어': 26000,
+  '트리플': 32000,
+  '스트레이트': 40000,
+  '플러시': 44000,
+  '풀하우스': 50000,
+  '포카드': 60000,
+  '스트레이트 플러시': 80000,
+  '로얄 플러시': 120000,
+  '더블 풀하우스': 60000,
+  '트리플 트리플': 80000,
+  '더블 스트레이트': 100000,
+  '풀 플러시': 120000,
+};
+
 function getBestHand(cards) {
   if (!cards.length) return {name:'하이카드', ...HAND_DATA['하이카드']};
 
@@ -3094,8 +3160,9 @@ function updateHUD() {
   const bossAliveNow = state.roundIdx === 2 && state.boss && !state.boss.defeated;
   if (state.phase === 'fly' && finalScore >= target) {
     if (scoreVal) scoreVal.style.color = '#fbbf24';
-    if (!state.fever && !bossAliveNow && !state._clearOverlay && !state._bossIntro) {
-      // 일반 라운드 또는 보스 처치 후: 목표 달성 시 피버
+    if (!state.fever && !bossAliveNow && !state._clearOverlay && !state._bossIntro
+        && !state._feverTriggered) {
+      state._feverTriggered = true; // 이번 라운드 한 번만 발동
       enterFeverMode('🎯 목표 달성!  Chips × 1.5');
     }
     // 보스가 살아있으면 점수 달성만으로 피버 진입 안 함
@@ -3209,31 +3276,281 @@ function drawFeverIntro() {
   const fi = state._feverIntro;
   if (!fi) return;
   fi.timer--;
-  if (fi.timer <= 0) {
-    state._feverIntro = null;
+
+  // 1단계 종료 → 2단계 전환 (피버 진입)
+  if (fi.timer <= 0 && fi.isHand && fi.stage === 1) {
+    state.fever = true;
+    state.combo = Math.max(state.combo, 20);
+    SFX.fever();
+    state._feverIntro = {
+      timer: 70, totalFrames: 70,
+      stage: 2, isHand: true, blockMs: fi.blockMs,
+      onDone: () => {
+        // 분열 공 생성
+        if (state._pendingBallCount > 1 && state.ball) {
+          state.extraBalls = [];
+          const cnt = state._pendingBallCount;
+          const speed = 18;
+          for (let i = 1; i < cnt; i++) {
+            const angle = (-Math.PI * 0.9) + (Math.PI * 0.8 / (cnt - 1)) * i;
+            state.extraBalls.push({
+              x: state.ball.x,
+              y: state.ball.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              r: 8, trail: [], graceFrames: 15,
+            });
+          }
+          spawnFloat(state.ball.x, state.ball.y - 30, '×' + cnt + ' 분열!', '#fbbf24');
+        }
+        state._pendingBallCount = 0;
+        // 피버 HTML 오버레이 표시 후 게임 재개
+        const feverDuration = fi.blockMs;
+        const intro = document.getElementById('fever-intro');
+        const feverStage = document.getElementById('fever-fever-stage');
+        const clearStage = document.getElementById('fever-clear-stage');
+        const sub = document.getElementById('fever-sub');
+        if (intro) {
+          intro.style.display = 'flex';
+          if (clearStage) clearStage.style.display = 'none';
+          if (feverStage) feverStage.style.display = 'flex';
+          if (sub) sub.textContent = 'Chips × 1.5  |  ' + (feverDuration/1000).toFixed(0) + '초';
+          setTimeout(() => {
+            if (intro) intro.style.display = 'none';
+            state.phase = 'fly';
+            state._handFeverEndTime = Date.now() + feverDuration;
+            console.log('[피버시작] 남은=', feverDuration, 'ms');
+          }, 800);
+        } else {
+          state.phase = 'fly';
+          state._handFeverEndTime = Date.now() + feverDuration;
+        }
+      },
+    };
     return;
   }
-  const progress = 1 - fi.timer / 80;
-  const alpha = fi.timer < 20 ? fi.timer / 20 : Math.min(1, progress * 5);
+
+  // 2단계 또는 일반 피버 종료
+  if (fi.timer <= 0) {
+    const cb = fi.onDone;
+    state._feverIntro = null;
+    if (cb) cb();
+    return;
+  }
+
+  const totalFrames = fi.totalFrames || 80;
+  const progress = 1 - fi.timer / totalFrames;
+  const alpha = fi.timer < 18 ? fi.timer / 18 : Math.min(1, progress * 5 + 0.15);
   const W = canvas.width, H = canvas.height;
   const ctx2 = canvas.getContext('2d');
   ctx2.save();
-  ctx2.fillStyle = `rgba(127,29,29,${alpha * 0.6})`;
-  ctx2.fillRect(0, 0, W, H);
-  const scale = 0.7 + progress * 0.3;
-  ctx2.translate(W / 2, H / 2);
-  ctx2.scale(scale, scale);
-  ctx2.textAlign = 'center';
-  ctx2.textBaseline = 'middle';
-  // 🔥 FEVER MODE 🔥
-  ctx2.fillStyle = `rgba(248,113,113,${alpha})`;
-  ctx2.font = 'bold 36px Space Mono, monospace';
-  ctx2.fillText('🔥 FEVER MODE 🔥', 0, -18);
-  // 서브 텍스트
-  ctx2.fillStyle = `rgba(251,191,36,${alpha})`;
-  ctx2.font = 'bold 12px Space Mono, monospace';
-  ctx2.fillText(fi.label, 0, 22);
+
+  if (fi.isHand && fi.stage === 1) {
+    // ── 1단계: 족보 정보 ──
+    ctx2.fillStyle = `rgba(15,23,42,${alpha * 0.82})`;
+    ctx2.fillRect(0, 0, W, H);
+    const sc = Math.min(1, 0.78 + progress * 0.22);
+    ctx2.translate(W / 2, H / 2);
+    ctx2.scale(sc, sc);
+    ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+    ctx2.fillStyle = `rgba(251,191,36,${alpha})`;
+    ctx2.font = 'bold 26px Space Mono, monospace';
+    ctx2.fillText('🃏  ' + fi.handName, 0, -52);
+    ctx2.fillStyle = `rgba(52,211,153,${alpha})`;
+    ctx2.font = 'bold 13px Space Mono, monospace';
+    ctx2.fillText(fi.handChips + 'C  ×  ' + fi.handMult + '  ×  ' + fi.xmult, 0, -18);
+    ctx2.fillStyle = `rgba(192,132,252,${alpha})`;
+    ctx2.font = 'bold 22px Space Mono, monospace';
+    ctx2.fillText('= ' + fi.handScore.toLocaleString(), 0, 16);
+    ctx2.fillStyle = `rgba(100,116,139,${alpha * 0.7})`;
+    ctx2.font = '10px Space Mono, monospace';
+    ctx2.fillText('▶  FEVER MODE 진입 중...', 0, 46);
+
+  } else if (fi.isHand && fi.stage === 2) {
+    // ── 2단계: FEVER 진입 ──
+    ctx2.fillStyle = `rgba(127,29,29,${alpha * 0.7})`;
+    ctx2.fillRect(0, 0, W, H);
+    const sc2 = Math.min(1, 0.78 + progress * 0.22);
+    ctx2.translate(W / 2, H / 2);
+    ctx2.scale(sc2, sc2);
+    ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+    ctx2.fillStyle = `rgba(248,113,113,${alpha})`;
+    ctx2.font = 'bold 34px Space Mono, monospace';
+    ctx2.fillText('🔥 FEVER MODE 🔥', 0, -20);
+    ctx2.fillStyle = `rgba(251,191,36,${alpha * 0.9})`;
+    ctx2.font = 'bold 13px Space Mono, monospace';
+    ctx2.fillText(fi.handName || '', 0, 18);
+
+  } else {
+    // ── 일반 피버 오버레이 (콤보) ──
+    ctx2.fillStyle = `rgba(127,29,29,${alpha * 0.6})`;
+    ctx2.fillRect(0, 0, W, H);
+    const sc3 = Math.min(1, 0.7 + progress * 0.3);
+    ctx2.translate(W / 2, H / 2);
+    ctx2.scale(sc3, sc3);
+    ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+    ctx2.fillStyle = `rgba(248,113,113,${alpha})`;
+    ctx2.font = 'bold 36px Space Mono, monospace';
+    ctx2.fillText('🔥 FEVER MODE 🔥', 0, -18);
+    ctx2.fillStyle = `rgba(251,191,36,${alpha})`;
+    ctx2.font = 'bold 12px Space Mono, monospace';
+    ctx2.fillText(fi.label || '', 0, 22);
+  }
   ctx2.restore();
+}
+
+// 7장 족보 판별 → 소모 → 잔류 → 홀 차단 피버
+function triggerHandScore(p) {
+  const hand = state.hand;
+
+  // 피버 모드 중이면 점수만 획득, 홀 차단/오버레이 없음
+  const px = p ? p.x : canvas.width / 2;
+  const py = p ? p.y : canvas.height * 0.5;
+
+  // 7장에서 최선의 족보 찾기 — 6장 특수족보 먼저 체크, 그 다음 5장 조합
+  const handOrder6 = ['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시','로얄 플러시','더블 풀하우스','트리플 트리플','더블 스트레이트','풀 플러시'];
+
+  // 1) 7장 중 모든 6장 조합에서 특수족보 체크
+  let best = null, bestRank = -1, bestChipsVal = -1;
+  const combos6 = getCombinations(hand, 6);
+  for (const combo of combos6) {
+    const h = evalSpecialHand6(combo);
+    if (!h) continue;
+    const r = handOrder6.indexOf(h.name);
+    const chipsVal = h.chips + combo.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+    if (r > bestRank || (r === bestRank && chipsVal > bestChipsVal)) {
+      bestRank = r; bestChipsVal = chipsVal; best = h;
+    }
+  }
+
+  // 2) 5장 조합 평가 (6장 족보보다 낮으면 무시)
+  const combos5 = getCombinations(hand, 5);
+  for (const combo of combos5) {
+    const h = getBestHand(combo);
+    const r = handOrder6.indexOf(h.name);
+    const chipsVal = h.chips + combo.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+    if (r > bestRank || (r === bestRank && chipsVal > bestChipsVal)) {
+      bestRank = r; bestChipsVal = chipsVal; best = h;
+    }
+  }
+  if (!best) best = getBestHand(hand);
+
+  const blockMs = HAND_FEVER_TIME[best.name] || 0;
+  const handSize = ['풀 플러시','더블 스트레이트','트리플 트리플','더블 풀하우스'].includes(best.name) ? 6 : 5;
+
+  // 피버 모드 중이면 점수만 획득
+  if (state.fever || (state._feverIntro && state._feverIntro.isHand)) {
+    const pb2 = planetBonus[best.name] || {chips:0, mult:0};
+    const hc2 = best.chips + pb2.chips;
+    const hm2 = best.mult + pb2.mult;
+    const hs2 = Math.round(hc2 * hm2 * best.xmult);
+    if (best.name !== '하이카드') {
+      spawnFloat(px, py - 20, best.name + ' +' + hs2.toLocaleString(), '#94a3b8');
+    }
+    // 사용 카드 제거 (6장 족보 포함)
+    const usedFast = getCombinations(hand, handSize).reduce((acc, combo) => {
+      const h = handSize === 6 ? evalSpecialHand6(combo) : getBestHand(combo);
+      if (h && h.name === best.name) return acc || combo; return acc;
+    }, null) || hand.slice(0, handSize);
+    state.hand = hand.filter(c => !usedFast.includes(c));
+    renderHand(); return; // updateHUD 호출 안 함 (피버 재트리거 방지)
+  }
+
+  // 최적 조합 카드 찾기 (6장 or 5장)
+  const combos = getCombinations(hand, handSize);
+  let usedCombo = null, bestScore2 = -1, bestChips2 = -1;
+  for (const combo of combos) {
+    const h = handSize === 6 ? evalSpecialHand6(combo) : getBestHand(combo);
+    if (!h || h.name !== best.name) continue;
+    const score = handOrder6.indexOf(h.name);
+    const chips = h.chips + combo.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+    if (score > bestScore2 || (score === bestScore2 && chips > bestChips2)) {
+      bestScore2 = score; bestChips2 = chips; usedCombo = combo;
+    }
+  }
+  if (!usedCombo) usedCombo = hand.slice(0, handSize);
+
+  // 족보 점수 적용
+  const pb = planetBonus[best.name] || {chips:0, mult:0};
+  const handChips = best.chips + pb.chips;
+  state.chips += handChips;
+  const handMult = best.mult + pb.mult;
+  const handScore = Math.round(handChips * handMult * best.xmult);
+
+  // 족보 이펙트 표시
+  if (best.name !== '하이카드') {
+    spawnFloat(px, py - 50, best.name + ' 🃏', '#fbbf24');
+    spawnFloat(px, py - 28, '+' + handChips + 'C × ' + handMult + ' × ' + best.xmult, '#34d399');
+    spawnFloat(px, py - 6, '= ' + handScore.toLocaleString(), '#c084fc');
+  }
+
+  // 사용 카드 제거 → 잔류 카드만 남김
+  state.hand = hand.filter(c => !usedCombo.includes(c));
+
+  // 홀 차단 + 2단계 오버레이 → 피버 진입
+  if (blockMs > 0) {
+    state._handFeverHandName = best.name;
+    state.phase = 'paused_fever';
+    state._pendingBallCount = HAND_BALL_COUNT[best.name] || 1;
+    state._feverIntro = {
+      timer: 90, totalFrames: 90,
+      stage: 1,
+      handName: best.name,
+      handScore, handChips, handMult, xmult: best.xmult,
+      blockMs,
+      isHand: true,
+    };
+  }
+
+  renderHand();
+  updateHUD();
+}
+
+function showHandFeverOverlay(handName, blockMs) {
+  // 현재 triggerHandScore에서 직접 _feverIntro를 설정하므로 미사용
+}
+
+function stepExtraBalls() {
+  const W = canvas.width, H = canvas.height;
+  const holeX = W / 2;
+  const holeR = W * 0.09;
+  const floorY = H - 21;
+
+  state.extraBalls = state.extraBalls.filter(b => {
+    // 중력
+    b.vy += 0.28;
+    b.vx *= 0.995;
+
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // 좌우 벽 반사
+    if (b.x - b.r < 0)  { b.x = b.r + 1;     b.vx =  Math.abs(b.vx) * 0.6; }
+    if (b.x + b.r > W)  { b.x = W - b.r - 1;  b.vx = -Math.abs(b.vx) * 0.6; }
+    if (b.y - b.r < 0)  { b.y = b.r + 1;      b.vy =  Math.abs(b.vy) * 0.5; }
+
+    // 홀 반경 밖에서만 바닥 충돌 → 홀 위에서는 그냥 낙하
+    const distToHole = Math.abs(b.x - holeX);
+    const overHole = distToHole < holeR;
+
+    if (!overHole && b.y + b.r >= floorY) {
+      b.y = floorY - b.r;
+      b.vy = 0;
+      // 홀 방향으로 굴러 들어감
+      const dir = holeX > b.x ? 1 : -1;
+      b.vx += dir * 0.5;
+      b.vx *= 0.90;
+    }
+
+    // 화면 아래로 나가면 제거
+    if (b.y > H + b.r * 2) return false;
+
+    // 트레일
+    b.trail.push({x: b.x, y: b.y});
+    if (b.trail.length > 8) b.trail.shift();
+
+    return true;
+  });
 }
 
 function triggerResult() {
@@ -3293,10 +3610,13 @@ function triggerResult() {
   state.phase = 'aim';
   state.charging = false; state.chargeVal = 0; state.chargeDir = 1;
   consecutiveHits = 0;
-  state.holeBlocked = false;
+  // 족보 피버 타이머 활성 중엔 holeBlocked 유지
+  console.log('[턴증가리셋]');
   // 핀 orbital / _orbitAcc 플래그 초기화 — 다음 턴에서 재발동 가능
   state.pins.forEach(p => { p.orbital = false; p._orbitAcc = null; p._baseType = null; p._starAcc = null; p._escapeCooldown = 0; });
-  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  // _handFeverEndTime, _feverTriggered, holeBlocked은 라운드 전체에서 유지
+  console.log('[턴증가리셋]');
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false; state.extraBalls = [];
   updateTurnDots();
   updateHUD();
   // 낙하 알림 플로팅 텍스트
@@ -3956,7 +4276,25 @@ function draw() {
     ctx.stroke();
   }
 
-  // launch position indicator
+  // 분열 공 렌더링
+  for (const eb of state.extraBalls) {
+    // 트레일
+    eb.trail.forEach((t, i) => {
+      const alpha = (i / eb.trail.length) * 0.3;
+      const r2 = eb.r * (i / eb.trail.length) * 0.7;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, r2, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(251,191,36,${alpha})`;
+      ctx.fill();
+    });
+    ctx.beginPath();
+    ctx.arc(eb.x, eb.y, eb.r, 0, Math.PI*2);
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+  }
   if (!b) {
     ctx.beginPath();
     const ldY = H - 21 - 30;
@@ -4020,6 +4358,8 @@ function draw() {
     ctx.restore();
   }
 
+
+
   // 클리어/게임오버 오버레이
   if (state._clearOverlay) drawClearOverlay();
   // 보스 인트로 오버레이
@@ -4062,6 +4402,21 @@ function loop(ts) {
   if ((state.phase === 'fly' || state.phase === 'slowmo_fall') && state.ball) {
     stepBoss();
     stepPhysics();
+  }
+  // 분열 공 처리
+  if (state.extraBalls.length > 0 && (state.phase === 'fly' || state.phase === 'slowmo_fall')) {
+    stepExtraBalls();
+  }
+
+  // 족보 피버 타이머 만료 체크
+  if (state._handFeverEndTime > 0 && state.phase !== 'paused_fever' && state.phase !== 'result') {
+    if (Date.now() >= state._handFeverEndTime) {
+      state._handFeverEndTime = 0;
+      state.fever = false;
+      state.extraBalls = [];
+      console.log('[피버종료]');
+      spawnFloat(canvas.width / 2, canvas.height * 0.5, '피버 종료', '#6b7280');
+    }
   }
 
   if (state.phase === 'aim' && state.charging) {
@@ -4325,11 +4680,13 @@ function resetGame() {
   state.magnet = false;
   state.turn = 1;
   state.totalChipsBank = 0;
-  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  console.log('[bulkReset] holeBlocked=false, _holeBlockTimer=0');
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state._handFeverEndTime = 0; state.holeBlocked = false; state._feverTriggered = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false; state.extraBalls = [];
   state.boss = null;
   state._clearOverlay = null;
   state._bossIntro = null;
   state._feverIntro = null;
+  state._handFeverEndTime = 0;
   shopState.coins = 4; shopState.rerollCost = 5;
   Object.keys(planetBonus).forEach(k => delete planetBonus[k]);
   pinUpgrades.normal = 0; pinUpgrades.spring = 0; pinUpgrades.card = 0; pinUpgrades.spring_add = 0; pinUpgrades.max_box = 0;
@@ -4347,7 +4704,8 @@ function resetRound() {
   state.deck.forEach(c => c.used = false);
   state.turn = 1;
   state.totalChipsBank = 0;
-  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  console.log('[bulkReset] holeBlocked=false, _holeBlockTimer=0');
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state._handFeverEndTime = 0; state.holeBlocked = false; state._feverTriggered = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false; state.extraBalls = [];
   initBoss(); // 보스 라운드면 보스 초기화
   updateDeckBtn(); renderJokerPanel(); renderConsumablePanel(); updateTurnDots();
   resize(); renderHand(); updateHUD();
@@ -5227,7 +5585,11 @@ function drawBossIntro() {
 }
 
 // ── INIT ──────────────────────────────────────────────────
-window.addEventListener('resize', resize);
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(resize, 150);
+});
 resize();
 initBoss(); // 초기 스테이지 보스 초기화
 renderHand();
