@@ -3529,14 +3529,35 @@ function stepExtraBalls() {
     if (b.x + b.r > W)  { b.x = W - b.r - 1;  b.vx = -Math.abs(b.vx) * 0.6; }
     if (b.y - b.r < 0)  { b.y = b.r + 1;      b.vy =  Math.abs(b.vy) * 0.5; }
 
-    // 홀 반경 밖에서만 바닥 충돌 → 홀 위에서는 그냥 낙하
+    // 핀 충돌 — 카드/미스터리핀은 카드 획득, 나머지는 반사만
+    for (const p of state.pins) {
+      if (!p.alive) continue;
+      const pdx = b.x - p.x, pdy = b.y - p.y;
+      const dist = Math.sqrt(pdx*pdx + pdy*pdy);
+      if (dist < b.r + p.r + 1) {
+        const nx = pdx/dist, ny = pdy/dist;
+        b.x = p.x + nx * (b.r + p.r + 1);
+        b.y = p.y + ny * (b.r + p.r + 1);
+        const dot = b.vx*nx + b.vy*ny;
+        b.vx -= 2*dot*nx * 0.7;
+        b.vy -= 2*dot*ny * 0.7;
+        // 카드/미스터리핀: 카드 획득
+        if ((p.type === 'card' || p.type === 'mystery') && !p.hit) {
+          p.hit = true;
+          onCardHit(p);
+          respawnCardPin(p);
+          setTimeout(() => { p.hit = false; }, 400);
+        }
+      }
+    }
+
+    // 홀 반경 밖에서만 바닥 충돌
     const distToHole = Math.abs(b.x - holeX);
     const overHole = distToHole < holeR;
 
     if (!overHole && b.y + b.r >= floorY) {
       b.y = floorY - b.r;
       b.vy = 0;
-      // 홀 방향으로 굴러 들어감
       const dir = holeX > b.x ? 1 : -1;
       b.vx += dir * 0.5;
       b.vx *= 0.90;
